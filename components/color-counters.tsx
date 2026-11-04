@@ -1,8 +1,8 @@
 "use client";
 
 import { startTransition, useOptimistic, useState } from "react";
-import { incrementCount } from "@/app/lib/actions";
-import type { Color, Counts } from "@/app/lib/colors";
+import { incrementCount } from "@/lib/actions";
+import type { Color, Counts } from "@/lib/colors";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 

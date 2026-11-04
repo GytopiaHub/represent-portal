@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import ColorCounters from "./ui/color-counters";
-import { getCounts } from "./lib/data";
+import ColorCounters from "@/components/color-counters";
+import { getCounts } from "@/lib/data";
 
 async function Counters() {
   const counts = await getCounts();
