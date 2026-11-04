@@ -1,16 +1,14 @@
 import "server-only";
 import { connection } from "next/server";
-import { db, buttonCounts } from "@/db";
-import { COLORS, type Counts } from "./colors";
+import { db, clickTables } from "@/db";
+import { COLORS, type Color, type Counts } from "./colors";
+
+export function countClicks(color: Color): Promise<number> {
+  return db.$count(clickTables[color]);
+}
 
 export async function getCounts(): Promise<Counts> {
   await connection(); // always read fresh counts at request time
-  const rows = await db.select().from(buttonCounts);
-
-  // Buttons without a row yet show 0.
-  const counts = Object.fromEntries(COLORS.map((c) => [c, 0])) as Counts;
-  for (const row of rows) {
-    if (row.color in counts) counts[row.color as keyof Counts] = row.count;
-  }
-  return counts;
+  const totals = await Promise.all(COLORS.map(countClicks));
+  return Object.fromEntries(COLORS.map((c, i) => [c, totals[i]])) as Counts;
 }
