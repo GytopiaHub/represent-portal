@@ -3,6 +3,8 @@
 import { startTransition, useOptimistic, useState } from "react";
 import { incrementCount } from "@/app/lib/actions";
 import type { Color, Counts } from "@/app/lib/colors";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const colors: { name: Color; className: string }[] = [
   { name: "red", className: "bg-red-500 hover:bg-red-600" },
@@ -34,15 +36,17 @@ export default function ColorCounters({
   return (
     <div className="flex flex-col gap-4 sm:flex-row">
       {colors.map(({ name, className }) => (
-        <button
+        <Button
           key={name}
-          type="button"
           aria-label={`${name}: ${optimisticCounts[name]}`}
           onClick={() => handleClick(name)}
-          className={`flex h-32 w-32 items-center justify-center rounded-2xl text-4xl font-semibold text-white transition-colors ${className}`}
+          className={cn(
+            "size-32 rounded-2xl text-4xl font-semibold text-white",
+            className,
+          )}
         >
           {optimisticCounts[name]}
-        </button>
+        </Button>
       ))}
     </div>
   );
