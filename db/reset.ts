@@ -1,17 +1,16 @@
-// Resets the database to an empty state:
+// Resets the database to the seeded demo state:
 //   1. drop every table and enum in the public schema
-//   2. recreate them from db/schema.ts (drizzle-kit push)
-//   3. insert pre-approved users from db/seeds/users.json
-// If the seed has no admin, the first person to sign in becomes the admin
-// (R-ROLE-3).
+//   2. enable pg_trgm and recreate tables from db/schema.ts (drizzle-kit push)
+//   3. insert fictional demo data (db/seed.ts)
+//
+// SEED_ADMIN_EMAIL (in .env, never committed) becomes an active admin. If it
+// is unset, the first person to sign in becomes the admin (R-ROLE-3).
 import "dotenv/config";
 import { execSync } from "node:child_process";
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-import { users, type UserRole, type UserStatus } from "./schema";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { sql } from "drizzle-orm";
+import { seedDatabase } from "./seed";
 
 async function main() {
   const db = drizzle(neon(process.env.DATABASE_URL!));
@@ -34,35 +33,18 @@ async function main() {
     await db.execute(sql`drop type if exists ${sql.identifier(typname)} cascade`);
   }
 
+  console.log("Enabling pg_trgm...");
+  await db.execute(sql`create extension if not exists pg_trgm`);
+
   console.log("Pushing schema...");
   execSync("npx drizzle-kit push --force", { stdio: "inherit" });
 
-  // Pre-approved users. Each row is claimed by the Google account with the
-  // same email on first sign-in (see allowDangerousEmailAccountLinking).
-  console.log("Seeding users...");
-  const file = path.join(import.meta.dirname, "seeds", "users.json");
-  const seed: SeedUser[] = JSON.parse(await readFile(file, "utf8"));
-  for (const u of seed) {
-    await db
-      .insert(users)
-      .values({
-        email: u.email.toLowerCase(),
-        name: u.name ?? null,
-        role: u.role ?? "member",
-        status: u.status ?? "active",
-        reviewedAt: new Date(),
-      })
-      .onConflictDoNothing();
-    console.log(`  ${u.email} (${u.role ?? "member"})`);
-  }
+  if (process.argv.includes("--no-seed")) return;
+  console.log("Seeding demo data...");
+  const result = await seedDatabase(db, process.env.SEED_ADMIN_EMAIL);
+  console.log(`  ${result.members} members, ${result.songs} songs, ${result.sessions} sessions`);
+  console.log(process.env.SEED_ADMIN_EMAIL ? `  admin: ${process.env.SEED_ADMIN_EMAIL}` : "  (no SEED_ADMIN_EMAIL — first sign-in becomes admin)");
 }
-
-type SeedUser = {
-  email: string;
-  name?: string;
-  role?: UserRole;
-  status?: UserStatus;
-};
 
 main().catch((err) => {
   console.error(err);

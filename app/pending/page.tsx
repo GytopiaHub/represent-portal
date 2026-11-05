@@ -30,7 +30,7 @@ export default function PendingPage() {
   return (
     <StatusScreen
       title="Awaiting approval"
-      description="Thanks for signing up! An admin needs to approve your account before you can use Represent. You'll see a notification here once you're in."
+      description="Thanks for signing up! An admin needs to approve your account before you can use RepresENT. You'll see a notification here once you're in."
       actions={
         <Link href="/" className={buttonVariants({ variant: "outline" })}>
           Check again

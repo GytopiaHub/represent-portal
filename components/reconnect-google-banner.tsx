@@ -1,7 +1,7 @@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { reconnectGoogle } from "@/lib/actions";
-import { getMyGoogleTokenError } from "@/lib/data";
+import { reconnectGoogle } from "@/lib/actions/account";
+import { getMyGoogleTokenError } from "@/lib/queries/me";
 
 /**
  * Shown when the stored refresh token is missing or revoked (FR-AUTH-4).

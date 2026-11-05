@@ -5,7 +5,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Notifications } from "@/components/notifications";
 import { OnboardingForm } from "@/components/onboarding-form";
 import { ReconnectGoogleBanner } from "@/components/reconnect-google-banner";
-import { getMyCalendars, getMyProfile } from "@/lib/data";
+import { getMyCalendars, getMyProfile } from "@/lib/queries/me";
+import { isMockGoogle } from "@/lib/server/integrations";
 
 export const metadata: Metadata = { title: "Set up your profile" };
 
@@ -19,11 +20,14 @@ async function OnboardingContent() {
       <ReconnectGoogleBanner returnTo="/onboarding" />
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl">{isReturning ? "Your profile" : "Welcome to Represent"}</CardTitle>
+          <CardTitle className="text-xl">{isReturning ? "Your profile" : "Welcome to RepresENT"}</CardTitle>
           <CardDescription>
             {isReturning
               ? "Update your details and which calendars count toward your busy time."
               : "A couple of things before you start."}
+            {isMockGoogle ? (
+              <span className="mt-1 block text-amber-300">Demo mode: these calendars are simulated, not read from your Google account.</span>
+            ) : null}
           </CardDescription>
         </CardHeader>
         <CardContent>

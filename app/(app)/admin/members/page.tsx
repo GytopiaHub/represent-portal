@@ -5,16 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ActionButton } from "@/components/admin/action-button";
+import { ActionButton } from "@/components/action-button";
 import { MemberRow, formatDate } from "@/components/admin/member-row";
 import {
   demoteToMember,
   promoteToAdmin,
   removeMember,
   restoreMember,
-} from "@/lib/actions";
+} from "@/lib/actions/admin";
 import { requireActiveUser } from "@/lib/dal";
-import { searchMembers, type MemberRow as Member } from "@/lib/data";
+import { searchMembers, type MemberRow as Member } from "@/lib/queries/admin";
 
 export const metadata: Metadata = { title: "Members" };
 

@@ -44,7 +44,8 @@ export const proxy = auth((req) => {
 
 export const config = {
   matcher: [
-    // Everything except Auth.js routes, Next internals and static files.
-    "/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    // Everything except API routes (they return 401/403 themselves, and
+    // /api/cron uses a bearer token), Next internals and static files.
+    "/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

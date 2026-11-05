@@ -18,7 +18,7 @@ export default function NotApprovedPage() {
   return (
     <StatusScreen
       title="Not approved"
-      description="Your request to join Represent wasn't approved. If you think this is a mistake, reach out to one of the admins — they can approve you later."
+      description="Your request to join RepresENT wasn't approved. If you think this is a mistake, reach out to one of the admins — they can approve you later."
     >
       <Suspense>
         <StatusGuard />

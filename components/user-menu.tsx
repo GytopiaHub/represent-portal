@@ -11,34 +11,55 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { UserAvatar } from "@/components/user-avatar";
-import { signOutAction } from "@/lib/actions";
+import { ADMIN_NAV } from "@/components/shell/nav-items";
+import { signOutAction } from "@/lib/actions/account";
 
 export function UserMenu({
-  name,
-  email,
-  image,
+  user,
   isAdmin,
 }: {
-  name?: string | null;
-  email?: string | null;
-  image?: string | null;
+  user: { id: string; name?: string | null; email?: string | null; image?: string | null };
   isAdmin: boolean;
 }) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="rounded-full outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50" aria-label="Account menu">
-        <UserAvatar name={name} email={email} image={image} />
+      <DropdownMenuTrigger
+        className="inline-flex size-11 items-center justify-center rounded-full outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        aria-label="Account menu"
+      >
+        <UserAvatar name={user.name} email={user.email} image={user.image} />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-60">
+      <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuGroup>
           <DropdownMenuLabel className="flex flex-col">
-            <span className="truncate font-medium text-foreground">{name}</span>
-            <span className="truncate text-xs font-normal">{email}</span>
-            {isAdmin ? <span className="text-xs font-normal">Admin</span> : null}
+            <span className="truncate font-medium text-foreground">{user.name}</span>
+            <span className="truncate text-xs font-normal">{user.email}</span>
           </DropdownMenuLabel>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
+        <DropdownMenuItem render={<Link href={`/members/${user.id}`} />}>My profile</DropdownMenuItem>
         <DropdownMenuItem render={<Link href="/onboarding" />}>Profile &amp; calendars</DropdownMenuItem>
+        <DropdownMenuItem render={<Link href="/notifications" />}>Notifications</DropdownMenuItem>
+        {/* Secondary nav for mobile, where the sidebar is hidden */}
+        <div className="lg:hidden">
+          <DropdownMenuItem render={<Link href="/groups" />}>Idol groups</DropdownMenuItem>
+          <DropdownMenuItem render={<Link href="/guests" />}>Guests</DropdownMenuItem>
+          <DropdownMenuItem render={<Link href="/songs/new" />}>Start a song crew</DropdownMenuItem>
+          {isAdmin ? (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Admin</DropdownMenuLabel>
+                {ADMIN_NAV.map((i) => (
+                  <DropdownMenuItem key={i.href} render={<Link href={i.href} />}>
+                    {i.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuGroup>
+            </>
+          ) : null}
+        </div>
+        <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" onClick={() => signOutAction()}>
           Sign out
         </DropdownMenuItem>

@@ -1,25 +1,20 @@
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { dismissNotification } from "@/lib/actions";
-import { getMyUnreadNotifications } from "@/lib/data";
+import { markNotificationRead } from "@/lib/actions/account";
+import { getMyBannerNotifications } from "@/lib/queries/me";
 
-const TITLES: Record<string, string> = {
-  approved: "You're in",
-};
-
-/** Unread in-app notifications, e.g. "You've been approved" (FR-ADM-4). */
+/** "You've been approved" banner on the next visit (FR-ADM-4). */
 export async function Notifications() {
-  const items = await getMyUnreadNotifications();
+  const items = await getMyBannerNotifications();
   if (items.length === 0) return null;
-
   return (
     <div className="flex flex-col gap-2">
       {items.map((n) => (
-        <Alert key={n.id}>
-          <AlertTitle>{TITLES[n.kind] ?? "Notification"}</AlertTitle>
-          <AlertDescription>{n.message}</AlertDescription>
+        <Alert key={n.id} className="border-primary/40">
+          <AlertTitle>{n.payload.title}</AlertTitle>
+          {n.payload.body ? <AlertDescription>{n.payload.body}</AlertDescription> : null}
           <AlertAction>
-            <form action={dismissNotification.bind(null, n.id)}>
+            <form action={markNotificationRead.bind(null, n.id)}>
               <Button type="submit" size="xs" variant="ghost">
                 Dismiss
               </Button>

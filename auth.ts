@@ -14,6 +14,7 @@ import {
 } from "@/db";
 import { encryptOptional } from "@/lib/crypto";
 import { ADMIN_SET_LOCK } from "@/lib/locks";
+import { notifyAdmins } from "@/lib/server/notify";
 
 // FR-AUTH-2
 const GOOGLE_SCOPES = [
@@ -123,6 +124,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             .update(users)
             .set({ status: "active", role: "admin", reviewedAt: new Date() })
             .where(eq(users.id, userId));
+        } else {
+          // FR-NOT-2: tell admins someone is waiting for approval.
+          await notifyAdmins(
+            "signup_pending",
+            { title: `${user.name ?? user.email ?? "Someone"} is waiting for approval`, href: "/admin/approvals" },
+            tx,
+          );
         }
       });
     },

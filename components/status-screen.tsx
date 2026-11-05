@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { signOutAction } from "@/lib/actions";
+import { signOutAction } from "@/lib/actions/account";
 
 /** Centered card used by login, pending and not-approved screens. */
 export function CenteredCard({ children }: { children: ReactNode }) {

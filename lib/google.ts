@@ -2,6 +2,9 @@ import "server-only";
 import { and, eq } from "drizzle-orm";
 import { db, accounts } from "@/db";
 import { decrypt, encrypt } from "./crypto";
+import type { Interval } from "./intervals";
+import { isMockGoogle } from "./server/integrations";
+import { mockCalendarList } from "./server/mock/calendar";
 
 // The only place OAuth tokens are decrypted (FR-AUTH-3).
 // Callers must already have authorised access to `userId` via lib/dal.ts.
@@ -131,6 +134,34 @@ export async function googleClient(userId: string): Promise<GoogleClient> {
   };
 }
 
+/** SEC-5: revoke the grant with Google and clear stored tokens. */
+export async function revokeGoogle(userId: string) {
+  const acct = await getGoogleAccount(userId);
+  if (!acct) return;
+  const token = acct.refresh_token ?? acct.access_token;
+  if (token) {
+    try {
+      await fetch("https://oauth2.googleapis.com/revoke", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ token: decrypt(token) }),
+        cache: "no-store",
+      });
+    } catch {
+      // Network failure: still clear locally.
+    }
+  }
+  await db
+    .update(accounts)
+    .set({ access_token: null, refresh_token: null, expires_at: null, token_error: "disconnected" })
+    .where(
+      and(
+        eq(accounts.provider, acct.provider),
+        eq(accounts.providerAccountId, acct.providerAccountId),
+      ),
+    );
+}
+
 /** Whether the user's Google connection needs a reconnect (FR-AUTH-4). */
 export async function getGoogleTokenError(userId: string): Promise<string | null> {
   const acct = await getGoogleAccount(userId);
@@ -150,6 +181,7 @@ export type GoogleCalendar = {
  * (callers should treat availability as "unknown").
  */
 export async function listCalendars(userId: string): Promise<GoogleCalendar[] | null> {
+  if (isMockGoogle) return mockCalendarList();
   try {
     const client = await googleClient(userId);
     const res = await client.fetch(
@@ -170,5 +202,85 @@ export async function listCalendars(userId: string): Promise<GoogleCalendar[] | 
   } catch (err) {
     if (err instanceof GoogleAuthError) return null;
     throw err;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Live Calendar API calls (used when GOOGLE_APIS=live)
+// ---------------------------------------------------------------------------
+
+const CAL_API = "https://www.googleapis.com/calendar/v3";
+
+/** FreeBusy for the user's selected calendars (FR-AV-2). Busy intervals only. */
+export async function liveFreeBusy(
+  userId: string,
+  calendarIds: string[],
+  from: Date,
+  to: Date,
+): Promise<Interval[]> {
+  const client = await googleClient(userId);
+  const res = await client.fetch(`${CAL_API}/freeBusy`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      timeMin: from.toISOString(),
+      timeMax: to.toISOString(),
+      items: calendarIds.map((id) => ({ id })),
+    }),
+  });
+  if (!res.ok) throw new Error(`FreeBusy failed: HTTP ${res.status}`);
+  const data = (await res.json()) as {
+    calendars?: Record<string, { busy?: { start: string; end: string }[] }>;
+  };
+  return Object.values(data.calendars ?? {}).flatMap((c) =>
+    (c.busy ?? []).map((b) => ({ start: Date.parse(b.start), end: Date.parse(b.end) })),
+  );
+}
+
+export type CalendarEventInput = {
+  summary: string;
+  description: string;
+  location?: string | null;
+  start: Date;
+  end: Date;
+  sessionId: string;
+};
+
+/** Create or update an event in the user's primary calendar (FR-CAL-1/2/4). */
+export async function liveUpsertEvent(
+  userId: string,
+  existingId: string | null,
+  ev: CalendarEventInput,
+): Promise<string> {
+  const client = await googleClient(userId);
+  const body = JSON.stringify({
+    summary: ev.summary,
+    description: ev.description,
+    location: ev.location ?? undefined,
+    start: { dateTime: ev.start.toISOString() },
+    end: { dateTime: ev.end.toISOString() },
+    extendedProperties: { private: { represent_session_id: ev.sessionId } },
+  });
+  const url = existingId
+    ? `${CAL_API}/calendars/primary/events/${encodeURIComponent(existingId)}`
+    : `${CAL_API}/calendars/primary/events`;
+  const res = await client.fetch(url, {
+    method: existingId ? "PATCH" : "POST",
+    headers: { "Content-Type": "application/json" },
+    body,
+  });
+  if (!res.ok) throw new Error(`Calendar write failed: HTTP ${res.status}`);
+  return ((await res.json()) as { id: string }).id;
+}
+
+export async function liveDeleteEvent(userId: string, eventId: string) {
+  const client = await googleClient(userId);
+  const res = await client.fetch(
+    `${CAL_API}/calendars/primary/events/${encodeURIComponent(eventId)}`,
+    { method: "DELETE" },
+  );
+  // 404/410 = already gone, which is what we wanted.
+  if (!res.ok && res.status !== 404 && res.status !== 410) {
+    throw new Error(`Calendar delete failed: HTTP ${res.status}`);
   }
 }

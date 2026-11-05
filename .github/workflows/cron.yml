@@ -1,0 +1,26 @@
+# Hourly scheduled jobs (SRS §2.1, §7): YouTube sync when due, RSVP reminders,
+# calendar-write retries, cache cleanup. Uses secrets, so it only runs on
+# schedule / manual dispatch — never on pull_request (SEC-7).
+name: cron-tick
+
+on:
+  schedule:
+    - cron: "7 * * * *" # hourly, off the top of the hour
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: POST /api/cron/tick
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl --fail-with-body --silent --show-error --max-time 90 \
+            -X POST "$APP_URL/api/cron/tick" \
+            -H "Authorization: Bearer $CRON_SECRET"

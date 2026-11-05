@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { completeOnboarding, type OnboardingState } from "@/lib/actions";
+import { completeOnboarding, type OnboardingState } from "@/lib/actions/account";
 import type { GoogleCalendar } from "@/lib/google";
 
 type Props = {
@@ -130,13 +130,13 @@ export function OnboardingForm({ defaults, calendars, isReturning }: Props) {
         <h2 className="font-medium text-foreground">About Google access</h2>
         <p>
           <strong className="text-foreground">&ldquo;Google hasn&rsquo;t verified this app&rdquo;</strong> —
-          you probably saw this when signing in. Represent is a small community app that hasn&rsquo;t been
+          you probably saw this when signing in. RepresENT is a small community app that hasn&rsquo;t been
           through Google&rsquo;s paid verification. It&rsquo;s safe to continue via{" "}
-          <strong>Advanced → Go to Represent</strong>.
+          <strong>Advanced → Go to RepresENT</strong>.
         </p>
         <p>
           <strong className="text-foreground">What we write to your calendar:</strong> when you join a
-          rehearsal or shoot, Represent adds that event to your Google Calendar and keeps it up to date if
+          rehearsal or shoot, RepresENT adds that event to your Google Calendar and keeps it up to date if
           the plan changes. We never edit or delete events we didn&rsquo;t create.
         </p>
       </section>

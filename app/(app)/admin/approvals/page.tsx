@@ -2,10 +2,10 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ActionButton } from "@/components/admin/action-button";
+import { ActionButton } from "@/components/action-button";
 import { MemberRow, formatDate } from "@/components/admin/member-row";
-import { approveUser, rejectUser } from "@/lib/actions";
-import { getApprovalQueue } from "@/lib/data";
+import { approveUser, rejectUser } from "@/lib/actions/admin";
+import { getApprovalQueue } from "@/lib/queries/admin";
 
 export const metadata: Metadata = { title: "Approvals" };
 

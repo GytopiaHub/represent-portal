@@ -1,0 +1,20 @@
+# GitHub disables scheduled workflows in public repos after 60 days without
+# activity (SRS §2.1). This re-enables cron.yml monthly using the built-in token.
+name: keepalive
+
+on:
+  schedule:
+    - cron: "0 3 1 * *" # 03:00 UTC on the 1st of each month
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Re-enable the cron workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow enable cron.yml --repo "$GITHUB_REPOSITORY"

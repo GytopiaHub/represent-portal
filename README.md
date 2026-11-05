@@ -1,66 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RepresENT Portal
 
-## Setup
+Crew portal for RepresENT, a K-pop dance cover crew: song crews, recruiting, availability, practices and filming, the cover catalogue and personal stats. The spec is [docs/SRS.md](docs/SRS.md).
 
-### Environment (`.env`)
+Stack: Next.js 16 (App Router, Cache Components) · Neon Postgres · Drizzle · Auth.js (Google, database sessions) · Tailwind + shadcn/ui · Recharts.
 
-| Variable | What |
-| --- | --- |
-| `DATABASE_URL` | Neon Postgres connection string |
-| `AUTH_SECRET` | Auth.js secret — `openssl rand -base64 32` |
-| `TOKEN_ENCRYPTION_KEY` | 32-byte base64 key encrypting Google tokens at rest — `openssl rand -base64 32`. Changing it makes stored tokens unreadable (everyone must reconnect). |
-| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Google OAuth client |
-
-### Google OAuth client
-
-1. Google Cloud Console → enable the **Google Calendar API**.
-2. OAuth consent screen: add scopes `calendar.readonly` and `calendar.events`. While the app is unverified, users see an "unverified app" warning (explained on the login and onboarding screens).
-3. Credentials → OAuth client ID (Web application). Authorised redirect URI:
-   `http://localhost:3000/api/auth/callback/google` (plus your production URL).
-
-### Database
-
-`npm run db:reset` drops everything and recreates the schema from `db/schema.ts`.
-The **first person to sign in** on an empty database becomes the admin; everyone after that waits for approval.
-
-## Auth overview
-
-- `auth.ts` — Auth.js (Google + Drizzle adapter, database sessions). Encrypts tokens in `linkAccount`, bootstraps the first admin in `events.createUser`, refreshes stored tokens on later sign-ins.
-- `proxy.ts` — redirects users to the right screen for their status (Next 16's replacement for `middleware.ts`).
-- `lib/dal.ts` — `requireUser` / `requireActiveUser` / `requireAdmin`. **Every** data function (`lib/data.ts`) and Server Action (`lib/actions.ts`) calls one of these; the proxy is not the only guard.
-- `lib/google.ts` — `googleClient(userId)`: the only code that decrypts tokens; refreshes expired access tokens and flags `accounts.token_error` on `invalid_grant`.
-
-## Getting Started
-
-First, run the development server:
+## Quick start
 
 ```bash
+cp .env.example .env      # fill in DATABASE_URL, AUTH_*, TOKEN_ENCRYPTION_KEY, SEED_ADMIN_EMAIL
+npm install
+npm run db:reset          # drops everything, recreates the schema, loads demo data
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Sign in with the Google account in `SEED_ADMIN_EMAIL`. It is seeded as an admin who already belongs to several crews, so the dashboard, catalogue and schedules have data straight away. Any other Google account signs up as *pending* and shows up under **Admin → Approvals**.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Demo mode (`GOOGLE_APIS=mock`)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Google sign-in is real. Google Calendar and YouTube are **simulated** until you switch to `GOOGLE_APIS=live`:
 
-## Learn More
+| Feature | In mock mode |
+| --- | --- |
+| Calendar list (onboarding) | Four fake calendars (Personal, Work, Uni timetable, Holidays) |
+| FreeBusy (avails, heatmap, flags) | Deterministic busy blocks per member: office worker, student or shift worker, plus random evening plans |
+| Calendar write-back | Records an event mapping; members with no calendars selected "fail" (to demo *Calendar not updated for X*) |
+| YouTube sync | The channel is "whatever is in the DB", plus two new uploads that the first **Sync YouTube now** imports. Stats grow a little each run |
 
-To learn more about Next.js, take a look at the following resources:
+The mock code lives in `lib/server/mock/*` and `db/fixtures.ts`. The live code paths (`lib/google.ts`, `lib/server/youtube-sync.ts`) are written but not yet exercised.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Things to try
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Dashboard:** year selector, stat tiles and ties ("Hanni (NewJeans), Karina (aespa) ×2"), charts, plus *Upcoming* with two pending invitations to accept or decline.
+- **Songs → Supernatural** (you're IC):
+  - **Crew** tab: invite members (with free hours and active-crew counts), assign or create guests, add custom positions.
+  - **Avails** tab: heatmap and suggested slots; "Schedule →" prefills a practice.
+- **Songs → Accendio:** a practice within 24 h. Open it to see the availability flags, RSVP grid and calendar status.
+- **Songs → HOT** (you're editor): the **Video** tab suggests the matching upload, so link it, then set the status to Posted.
+- **Admin:**
+  - **Approvals:** two pending users and one rejected.
+  - **Backfill queue:** create song records from old uploads, or mark them "not a cover".
+  - **Settings:** *Sync YouTube now*, *Run tick now* (sends RSVP reminders), and the stalled-jobs warning.
 
-## Deploy on Vercel
+## Environment
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+See [.env.example](.env.example). In production, set them in Vercel (and `APP_URL` + `CRON_SECRET` as GitHub Actions secrets).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Google OAuth client
+
+1. Google Cloud Console → enable the **Google Calendar API** (and **YouTube Data API v3** for an API key).
+2. OAuth consent screen: add scopes `calendar.readonly` and `calendar.events`, then **publish to In production**. In Testing mode, refresh tokens expire after 7 days. Members will see an "unverified app" warning, which the login and onboarding screens explain.
+3. Credentials → OAuth client ID (Web application). Authorised redirect URI: `http://localhost:3000/api/auth/callback/google`, plus your production URL.
+
+## Scheduled jobs
+
+`/api/cron/tick` (bearer `CRON_SECRET`) does the following:
+- runs the YouTube sync once a day after the configured time
+- sends RSVP reminders for sessions in the next 24 h
+- retries failed calendar writes (up to 3 attempts)
+- prunes the FreeBusy cache
+
+It's idempotent. It's called by:
+- `.github/workflows/cron.yml`: hourly.
+- `.github/workflows/keepalive.yml`: monthly. It re-enables the cron, because GitHub disables schedules in quiet public repos.
+- `vercel.json`: a daily fallback.
+
+## Code map
+
+```
+app/(app)/…          pages (dashboard, catalogue, songs, availability, admin, …)
+app/api/…            auth, avails (JSON), cron/tick, notifications/unread
+auth.ts, proxy.ts    Auth.js config; route gating by user status
+lib/dal.ts           authorization guards: requireActiveUser / requireAdmin / requireSongEditor / requireSelf
+lib/queries/*        reads for pages — each starts with a guard
+lib/actions/*        Server Actions — guard + Zod validation, return { ok } | { ok: false, error }
+lib/server/*         avails engine, calendar sync, YouTube sync, cron, stats, notifications
+lib/google.ts        the only code that decrypts OAuth tokens
+db/schema.ts         Drizzle schema (single source of truth); db/seed.ts demo data
+```
+
+Scripts: `db:reset` (drop, push, seed; `-- --no-seed` to skip the seed), `db:seed`, `db:studio`.
