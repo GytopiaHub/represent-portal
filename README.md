@@ -1,5 +1,35 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Setup
+
+### Environment (`.env`)
+
+| Variable | What |
+| --- | --- |
+| `DATABASE_URL` | Neon Postgres connection string |
+| `AUTH_SECRET` | Auth.js secret — `openssl rand -base64 32` |
+| `TOKEN_ENCRYPTION_KEY` | 32-byte base64 key encrypting Google tokens at rest — `openssl rand -base64 32`. Changing it makes stored tokens unreadable (everyone must reconnect). |
+| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Google OAuth client |
+
+### Google OAuth client
+
+1. Google Cloud Console → enable the **Google Calendar API**.
+2. OAuth consent screen: add scopes `calendar.readonly` and `calendar.events`. While the app is unverified, users see an "unverified app" warning (explained on the login and onboarding screens).
+3. Credentials → OAuth client ID (Web application). Authorised redirect URI:
+   `http://localhost:3000/api/auth/callback/google` (plus your production URL).
+
+### Database
+
+`npm run db:reset` drops everything and recreates the schema from `db/schema.ts`.
+The **first person to sign in** on an empty database becomes the admin; everyone after that waits for approval.
+
+## Auth overview
+
+- `auth.ts` — Auth.js (Google + Drizzle adapter, database sessions). Encrypts tokens in `linkAccount`, bootstraps the first admin in `events.createUser`, refreshes stored tokens on later sign-ins.
+- `proxy.ts` — redirects users to the right screen for their status (Next 16's replacement for `middleware.ts`).
+- `lib/dal.ts` — `requireUser` / `requireActiveUser` / `requireAdmin`. **Every** data function (`lib/data.ts`) and Server Action (`lib/actions.ts`) calls one of these; the proxy is not the only guard.
+- `lib/google.ts` — `googleClient(userId)`: the only code that decrypts tokens; refreshes expired access tokens and flags `accounts.token_error` on `invalid_grant`.
+
 ## Getting Started
 
 First, run the development server:
