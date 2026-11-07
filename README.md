@@ -26,7 +26,7 @@ Google sign-in is real. Google Calendar and YouTube are **simulated** until you 
 | Calendar write-back | Records an event mapping; members with no calendars selected "fail" (to demo *Calendar not updated for X*) |
 | YouTube sync | The channel is "whatever is in the DB", plus two new uploads that the first **Sync YouTube now** imports. Stats grow a little each run |
 
-The mock code lives in `lib/server/mock/*` and `db/fixtures.ts`. The live code paths (`lib/google.ts`, `lib/server/youtube-sync.ts`) are written but not yet exercised.
+The mock code lives in `src/server/mock/`. The live code paths (`src/server/google.ts`, `src/server/youtube-sync.ts`) are written but not yet exercised.
 
 ### Things to try
 
@@ -64,18 +64,43 @@ It's idempotent. It's called by:
 - `.github/workflows/keepalive.yml`: monthly. It re-enables the cron, because GitHub disables schedules in quiet public repos.
 - `vercel.json`: a daily fallback.
 
-## Code map
+## Project structure
 
 ```
-app/(app)/…          pages (dashboard, catalogue, songs, availability, admin, …)
-app/api/…            auth, avails (JSON), cron/tick, notifications/unread
-auth.ts, proxy.ts    Auth.js config; route gating by user status
-lib/dal.ts           authorization guards: requireActiveUser / requireAdmin / requireSongEditor / requireSelf
-lib/queries/*        reads for pages — each starts with a guard
-lib/actions/*        Server Actions — guard + Zod validation, return { ok } | { ok: false, error }
-lib/server/*         avails engine, calendar sync, YouTube sync, cron, stats, notifications
-lib/google.ts        the only code that decrypts OAuth tokens
-db/schema.ts         Drizzle schema (single source of truth); db/seed.ts demo data
+src/
+  app/                 routing only: (public) status screens, (app) member pages, onboarding, api/
+  features/<domain>/   UI for one domain (songs, schedule, availability, account, …)
+  components/          shared UI: ui/ (shadcn), layout/ (shell, nav), common/, charts/
+  server/              the only code that touches the database (SEC-1)
+  db/                  Drizzle client, schema/ (one file per domain), types, errors
+  lib/                 framework-free helpers usable anywhere (time, intervals, labels)
+  auth.ts, proxy.ts    Auth.js config; route gating by user status (UX only)
+scripts/               db:reset and db:seed (fictional data only)
 ```
+
+Imports only point down: `app → features → components, lib` and `app, features → server → db, lib`. ESLint enforces this (`eslint.config.mjs`). Type-only imports are always allowed.
+
+### Inside `src/server`
+
+| Path | What it holds |
+| --- | --- |
+| `auth-guards.ts` | `requireActiveUser`, `requireAdmin`, `requireSongEditor`, `requireSelf`, `activeUserOrResponse` |
+| `action.ts` | Server Action plumbing: `run`, `parse` (Zod), `UserError`, common field schemas |
+| `<domain>/queries.ts` | Reads for pages. Each one starts with a guard. |
+| `<domain>/actions.ts` | `"use server"` mutations: guard → Zod → write → notify → `refresh()` → `after(calendar sync)` |
+| `<domain>/*.ts` (anything else) | Unguarded helpers for other server code. Callers authorize first. Never export these from an `actions.ts`, because every export there becomes a callable endpoint. |
+| `google.ts` | The only code that decrypts OAuth tokens |
+| `calendar-sync.ts`, `youtube-sync.ts`, `stats.ts`, `notify.ts` | Cross-cutting services named in the SRS |
+| `jobs/tick.ts` | What `/api/cron/tick` runs |
+| `mock/` | Simulated Google APIs and their fixtures |
+
+Domains: `account`, `availability`, `catalogue` (and backfill), `crew` (recruiting), `dashboard`, `groups`, `guests`, `members`, `notifications`, `schedule` (practices and filming), `settings`, `songs`.
+
+### Adding a feature
+
+1. Tables go in `src/db/schema/<domain>.ts`, re-exported from `schema/index.ts`.
+2. Add `src/server/<domain>/queries.ts` and `actions.ts`.
+3. Add UI in `src/features/<domain>/components/`.
+4. Add the route under `src/app/`. Keep the page thin.
 
 Scripts: `db:reset` (drop, push, seed; `-- --no-seed` to skip the seed), `db:seed`, `db:studio`.
