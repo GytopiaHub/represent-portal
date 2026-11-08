@@ -26,6 +26,14 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   return session?.user ?? null;
 });
 
+/**
+ * Marks a read that is intentionally public (R-ROLE-6, SEC-1): signed-out
+ * visitors may call it. It checks nothing. It exists so every data function
+ * still starts with a guard, and public reads are easy to find with grep.
+ * Only use it in src/server/public/**, and only for posted, public data.
+ */
+export function publicRead(): void {}
+
 /** Any signed-in user, whatever their status (for the status screens). */
 export async function requireUser(): Promise<SessionUser> {
   const user = await getSessionUser();

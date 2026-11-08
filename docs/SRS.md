@@ -1,8 +1,9 @@
 # RepresENT Portal — Software Requirements Specification
 
-**Version:** 1.2 · **Date:** 2026-11-04 · **Audience:** Claude (implementation agent) and RepresENT admins
+**Version:** 1.3 · **Date:** 2026-11-08 · **Audience:** Claude (implementation agent) and RepresENT admins
 
 > **Changelog**
+> - **v1.3:** Added read-only **Visitor** access for people who aren't signed in (previously out of scope): `/explore` (channel overview and most popular covers), `/explore/catalogue` and `/explore/songs/[id]` (credits). Visitors see only posted covers and the crew credits already published in each video's caption. No new database role: a visitor is simply "no session". Channel profile stats are hard-coded until the YouTube channel API is wired up.
 > - **v1.2:** The GitHub repo is **public**, so Vercel Hobby can deploy it. Added public-repo rules (no secrets or real member data in the repo, secret scanning), a keepalive for the scheduled GitHub Actions workflow, and a stale-cron warning for admins.
 > - **v1.1:** Stack changed from Vite + React + Supabase to **Next.js (App Router) + Neon Postgres + Auth.js + Drizzle ORM** on Vercel. Authorization moves from Postgres RLS to a server-side authorization layer. Scheduled jobs move to GitHub Actions. Live notifications use polling instead of Supabase Realtime.
 > - **v1.0:** Initial spec.
@@ -23,19 +24,22 @@ Members use the portal to:
 - browse a catalogue of every RepresENT cover, with YouTube stats synced automatically
 - see their own history and a personal stats dashboard
 
+Anyone, signed in or not, can also browse a public, read-only showcase: the channel overview, the most popular covers, the catalogue and each cover's credits (§3.1 Visitor).
+
 ### 1.3 Definitions
 | Term | Meaning |
 |---|---|
 | **Member** | An approved RepresENT user who signs in with Google. |
 | **Admin** | A member with system-management rights. Admins can also do everything a member can. |
 | **Pending user** | Someone who signed in but has not yet been approved by an admin. |
+| **Visitor** | Anyone using the site without signing in. Visitors only see the public `/explore` pages. Not the same as a **Guest**. |
 | **Song crew / Song** | One cover project: a song by an idol group, plus the people working on it. |
 | **IC** | "In charge." The person who starts and runs a song crew. A song can have more than one IC. |
 | **Crew role** | `IC`, `Dancer`, `Videographer`, `Editor`. |
 | **Idol group / Artist** | The original K-pop act (a group or a soloist). |
 | **Idol member** | A member of an idol group, such as "Minji" in NewJeans. |
 | **Dance position** | A slot in a song crew that maps to one idol member, or a custom slot. |
-| **Guest** | A person outside RepresENT, stored by name, who can be credited on a song. |
+| **Guest** | A person outside RepresENT, stored by name, who can be credited on a song. Not the same as a **Visitor**. |
 | **Avails** | When a member is free. Calculated from Google Calendar busy/free plus manual overrides. |
 
 ### 1.4 Scale & constraints
@@ -84,19 +88,20 @@ Members use the portal to:
 ## 3. Users, Roles & Permissions
 
 ### 3.1 System roles
-| Capability | Pending | Member | Admin |
-|---|:-:|:-:|:-:|
-| Sign in with Google | ✅ | ✅ | ✅ |
-| See "awaiting approval" screen only | ✅ | | |
-| Browse catalogue, own history, dashboard | | ✅ | ✅ |
-| Connect Google Calendar, manage own avails | | ✅ | ✅ |
-| Start a song crew (becomes IC) | | ✅ | ✅ |
-| Edit a song crew | | ICs of that song only | ✅ (any song) |
-| Approve or reject signups | | | ✅ |
-| Promote/demote admins, remove members | | | ✅ |
-| Manage idol groups and rosters | | | ✅ |
-| Change system settings | | | ✅ |
-| Tag imported/past videos with crews and roles | | ICs of that song | ✅ |
+| Capability | Visitor | Pending | Member | Admin |
+|---|:-:|:-:|:-:|:-:|
+| Browse public `/explore` pages (channel, popular covers, catalogue, credits) | ✅ | | ✅ | ✅ |
+| Sign in with Google | ✅ | ✅ | ✅ | ✅ |
+| See "awaiting approval" screen only | | ✅ | | |
+| Browse member catalogue, own history, dashboard | | | ✅ | ✅ |
+| Connect Google Calendar, manage own avails | | | ✅ | ✅ |
+| Start a song crew (becomes IC) | | | ✅ | ✅ |
+| Edit a song crew | | | ICs of that song only | ✅ (any song) |
+| Approve or reject signups | | | | ✅ |
+| Promote/demote admins, remove members | | | | ✅ |
+| Manage idol groups and rosters | | | | ✅ |
+| Change system settings | | | | ✅ |
+| Tag imported/past videos with crews and roles | | | ICs of that song | ✅ |
 
 **Rules**
 - **R-ROLE-1:** A new sign-in creates a user with `status = pending`. Pending users cannot read any app data. Enforce this **on the server**: in `middleware.ts` (redirect) **and** in every data-access function and Server Action (see §6). Hiding things in the UI is not enough.
@@ -104,6 +109,10 @@ Members use the portal to:
 - **R-ROLE-3:** The **first user** to sign in on an empty database becomes an `active` admin automatically (bootstrap). Do this in the Auth.js `events.createUser` callback, inside a transaction.
 - **R-ROLE-4:** The last remaining admin cannot be demoted or removed.
 - **R-ROLE-5:** "Removing" a member sets `status = removed`. It is a soft delete: their history stays visible in the catalogue, they can no longer sign in to the app, and their sessions are deleted.
+- **R-ROLE-6 (Visitor):** A visitor is anyone without a session, including removed users. It is not a database role: there is no user row and no `system_role` value. Visitors may open only `/login` and `/explore/**`, and the bare site root `/` sends them to `/explore`.
+  - They see only **posted** covers: video stats, group, date, and the crew credits (name, dance position, Instagram handle) that are already published in each video's caption.
+  - They never see emails, profile images, guest contact notes, avails, sessions, invitations, member profiles, or songs that aren't posted.
+  - Pending and rejected users keep seeing only their status screen (R-ROLE-1). Members can also open `/explore`.
 
 ### 3.2 Crew roles (per song)
 - Roles: `IC`, `Dancer`, `Videographer`, `Editor`.
@@ -220,6 +229,13 @@ Stored in a single-row `app_settings` table.
 - **FR-YT-3:** **Backfill:** on first sync, every existing channel video is imported as "untagged". An admin **Backfill queue** page lists untagged videos. Admins (or the IC once assigned) create a song crew record for each video, with group, positions and crew assignments, members or guests. They can also mark a video "Not a cover / ignore" (for example, a vlog or announcement).
 - **FR-YT-4:** For backfilled songs, crew assignments are recorded directly with no invitation flow. Practices and filming are optional for them.
 
+#### Public pages (Visitor, R-ROLE-6)
+- **FR-PUB-1:** `/explore` is the public landing page. It shows the channel profile (name, handle, description, subscriber, video and view counts, and a link to the channel) and the crew totals (number of posted covers and total views on them).
+- **FR-PUB-2:** `/explore` also shows the **6 most viewed** posted covers and the top 5 most covered groups. `/explore/catalogue` lists all posted covers with the same cards, filters and sorts as FR-CAT-1/2, except the "songs I'm in" toggle. The crew-member filter lists only people credited on a posted cover. Public cards link to `/explore/songs/[id]`.
+- **FR-PUB-3:** `/explore/songs/[id]` shows a posted cover: an embedded player (`youtube-nocookie.com`), views, likes and comments, and the credits: dancers as "Position – Name", ICs, videographers and editors, each with their Instagram handle if set. Guests are marked. Any other song ID returns 404.
+- **FR-PUB-4:** The channel profile comes from `getChannelInfo()` in `src/server/youtube-channel.ts`. For now it returns hard-coded, fictional data (`MOCK_CHANNEL_INFO` in `src/server/mock/fixtures.ts`) in both mock and live mode (§13 A11). Later it will call YouTube `channels.list`.
+- **Implementation:** all public reads live in `src/server/public/queries.ts`. Each one calls `publicRead()` (§6 SEC-1), validates its input with Zod, and caches results for an hour (`"use cache"` + `cacheLife("hours")`), since stats only change when the daily sync runs.
+
 ### 4.9 Member History
 - **FR-HIS-1:** "My Songs" lists every song (in any status) the member has accepted a role in. It shows status, group, their role(s), their dance position(s) and the posted date. It is filterable by role and status. Cancelled songs are shown greyed out.
 - **FR-HIS-2:** A member's public profile page (visible to other members) shows their posted songs and headline stats.
@@ -335,8 +351,9 @@ sync_runs           (kind, started_at, finished_at, ok bool, summary jsonb)
     - `requireAdmin()`
     - `requireSongEditor(songId)`: the user is an IC of the song, or an admin
     - `requireSelf(userId)`
+    - `publicRead()`: a no-op marker for reads that are intentionally public (R-ROLE-6). Use it only in `src/server/public/**`, and only for posted, public data.
   - Every Server Action and Route Handler calls the right guard first, then validates its input with Zod.
-  - `middleware.ts` redirects unauthenticated users to `/login`, and users who aren't active to `/pending`. Middleware is for UX only; the guards are what enforce security.
+  - `src/proxy.ts` sends visitors to `/login`, except for `/explore/**` (and `/`, which goes to `/explore`), and sends users who aren't active to `/pending`. The proxy is for UX only; the guards are what enforce security.
   - Write-permission summary: songs, positions, assignments, invitations and sessions → `requireSongEditor`. Members edit only their own profile, overrides, calendars and RSVPs. An invitee may only respond to their own invitation.
 - **SEC-2 Token handling:** Google tokens are encrypted at rest (FR-AUTH-3) and never sent to the client. The session object exposes only `id`, `name`, `image`, `system_role` and `status`.
 - **SEC-3 Calendar privacy:** other members see only **busy/free intervals**, never calendar event titles or details, and the app never stores them.
@@ -391,6 +408,9 @@ sync_runs           (kind, started_at, finished_at, ok bool, summary jsonb)
 ```
 app/(public)/login             Google sign-in
 app/(public)/pending           Awaiting approval / rejected screen
+app/(visitor)/explore          Public: channel overview + most popular covers (no sign-in)
+app/(visitor)/explore/catalogue      Public catalogue of posted covers
+app/(visitor)/explore/songs/[id]     Public cover page with credits
 app/(app)/onboarding           Profile + calendar selection
 app/(app)/                     Dashboard (stats + upcoming)
 app/(app)/catalogue            All posted covers
@@ -447,6 +467,7 @@ app/api/cron/tick              Scheduled jobs
 - **AC-9:** `/api/cron/tick` without the correct bearer token returns 401.
 - **AC-10:** The public repo contains no secrets or real member data. Pushing a file with a fake API key is blocked by push protection.
 - **AC-11:** If ticks stop for more than 3 hours, admins see the stalled-jobs warning. When ticks resume, every overdue reminder is sent exactly once.
+- **AC-12:** In a private window, `/` redirects to `/explore`, which shows the channel stats and the most popular covers. A posted cover's page shows its credits, while an unposted song's ID returns 404. `/catalogue`, `/songs/...` and `/admin` redirect to `/login`, and `/api/avails` returns 401. The public pages contain no emails or profile images.
 
 ---
 
@@ -456,7 +477,6 @@ app/api/cron/tick              Scheduled jobs
 - Attendance tracking (present/late/absent): RSVP only
 - Uploading or hosting videos; editing workflow tools
 - Multiple YouTube channels
-- Public (non-member) access to the catalogue
 - Payments or studio booking integrations
 
 ---
@@ -464,7 +484,7 @@ app/api/cron/tick              Scheduled jobs
 ## 13. Assumptions & Open Questions
 | # | Item | Current assumption |
 |---|---|---|
-| A1 | Who sees the catalogue? | Members only (logged in and active). |
+| A1 | Who sees the catalogue? | Everyone sees posted covers and their credits on the public `/explore` pages (R-ROLE-6), because the captions on YouTube already list the crew. The member catalogue (`/catalogue`, with "songs I'm in" and links to the full song pages) stays members-only. |
 | A2 | Song status changes | Manual by IC; `Posted` requires a linked video. |
 | A3 | Calendar events go to | Each member's **primary** calendar. |
 | A4 | Most-covered idol member | Counts only positions mapped to an idol member, not custom slots. |
@@ -473,4 +493,6 @@ app/api/cron/tick              Scheduled jobs
 | A7 | Can ICs edit the roster directly? | No. Only admins can; ICs can request a group, or use custom positions meanwhile. |
 | A8 | Non-cover uploads on the channel | Admins mark them "ignored" in the backfill queue. |
 | A9 | Repo visibility | **Public** GitHub repo (needed for free Vercel deploys from an organization repo). Covered by SEC-7 and the §2.1 keepalive. |
+| A10 | How is a visitor represented? | As "no session". There is no `guest`/`visitor` value in `user_role`, and no account. It's called **Visitor** so it isn't confused with **Guest** (a non-member credited on a song). |
+| A11 | Where do the public channel stats come from? | Hard-coded, fictional placeholder data (`MOCK_CHANNEL_INFO`) until the YouTube `channels.list` call is implemented in `getChannelInfo()`. Cover stats come from the synced `youtube_videos` table. |
 | Q1 | Should guests ever be able to claim/link a member account later? | Not in v1. |

@@ -40,6 +40,7 @@ The mock code lives in `src/server/mock/`. The live code paths (`src/server/goog
   - **Approvals:** two pending users and one rejected.
   - **Backfill queue:** create song records from old uploads, or mark them "not a cover".
   - **Settings:** *Sync YouTube now*, *Run tick now* (sends RSVP reminders), and the stalled-jobs warning.
+- **Public pages (signed out):** open the site in a private window. `/` goes to **/explore**, with the channel stats (hard-coded placeholders for now), the most popular covers and the top groups. **Catalogue** filters work without signing in, and opening a cover shows its embedded video and credits. Member pages still redirect to `/login`.
 
 ## Environment
 
@@ -68,7 +69,7 @@ It's idempotent. It's called by:
 
 ```
 src/
-  app/                 routing only: (public) status screens, (app) member pages, onboarding, api/
+  app/                 routing only: (public) status screens, (visitor) signed-out /explore pages, (app) member pages, onboarding, api/
   features/<domain>/   UI for one domain (songs, schedule, availability, account, …)
   components/          shared UI: ui/ (shadcn), layout/ (shell, nav), common/, charts/
   server/              the only code that touches the database (SEC-1)
@@ -84,7 +85,9 @@ Imports only point down: `app → features → components, lib` and `app, featur
 
 | Path | What it holds |
 | --- | --- |
-| `auth-guards.ts` | `requireActiveUser`, `requireAdmin`, `requireSongEditor`, `requireSelf`, `activeUserOrResponse` |
+| `auth-guards.ts` | `requireActiveUser`, `requireAdmin`, `requireSongEditor`, `requireSelf`, `activeUserOrResponse`, plus `publicRead` (marks an intentionally public read) |
+| `public/queries.ts` | The only reads visitors can reach (`/explore`): posted covers and credits only, Zod-validated, cached for an hour |
+| `youtube-channel.ts` | `getChannelInfo()`: channel profile for `/explore` (hard-coded until the YouTube channel API is wired up) |
 | `action.ts` | Server Action plumbing: `run`, `parse` (Zod), `UserError`, common field schemas |
 | `<domain>/queries.ts` | Reads for pages. Each one starts with a guard. |
 | `<domain>/actions.ts` | `"use server"` mutations: guard → Zod → write → notify → `refresh()` → `after(calendar sync)` |
@@ -94,7 +97,7 @@ Imports only point down: `app → features → components, lib` and `app, featur
 | `jobs/tick.ts` | What `/api/cron/tick` runs |
 | `mock/` | Simulated Google APIs and their fixtures |
 
-Domains: `account`, `availability`, `catalogue` (and backfill), `crew` (recruiting), `dashboard`, `groups`, `guests`, `members`, `notifications`, `schedule` (practices and filming), `settings`, `songs`.
+Domains: `account`, `availability`, `catalogue` (and backfill), `crew` (recruiting), `dashboard`, `groups`, `guests`, `members`, `notifications`, `public` (signed-out visitors), `schedule` (practices and filming), `settings`, `songs`.
 
 ### Adding a feature
 
