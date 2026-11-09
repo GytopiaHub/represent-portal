@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import {
+  EXPLORE_PATH,
   LOGIN_PATH,
   NOT_APPROVED_PATH,
   ONBOARDING_PATH,
   PENDING_PATH,
   gatePathFor,
   homePathFor,
+  isPublicPath,
 } from "@/lib/access";
 
 // First line of defence (R-ROLE-1). Every data-access function and Server
@@ -17,9 +19,11 @@ export const proxy = auth((req) => {
   const user = req.auth?.user;
   const redirect = (path: string) => NextResponse.redirect(new URL(path, req.nextUrl));
 
-  // Signed out (or removed): only the login page.
+  // Signed out (or removed): the login page and the public /explore pages
+  // (R-ROLE-6). The bare site root goes to /explore.
   if (!user || user.status === "removed") {
-    if (pathname === LOGIN_PATH) return NextResponse.next();
+    if (pathname === LOGIN_PATH || isPublicPath(pathname)) return NextResponse.next();
+    if (pathname === "/") return redirect(EXPLORE_PATH);
     const url = new URL(LOGIN_PATH, req.nextUrl);
     if (pathname !== "/") url.searchParams.set("callbackUrl", pathname + search);
     return NextResponse.redirect(url);

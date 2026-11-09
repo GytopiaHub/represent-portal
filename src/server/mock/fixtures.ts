@@ -6,6 +6,22 @@
 
 export const MOCK_CHANNEL_ID = "UC_mock_represent_channel";
 
+/**
+ * Placeholder channel profile for the public /explore page (FR-PUB-4). The
+ * live version will come from YouTube `channels.list`; until then this is
+ * hard-coded and made up.
+ */
+export const MOCK_CHANNEL_INFO = {
+  title: "RepresENT",
+  handle: "@represent.dance",
+  description:
+    "A K-pop dance cover crew from Singapore. New covers, dance-in-public videos and behind-the-scenes every month.",
+  url: "https://www.youtube.com/@represent.dance",
+  subscriberCount: 12_400,
+  videoCount: 86,
+  viewCount: 1_930_000,
+};
+
 /** Calendars every mock Google account has (FR-AUTH-5 calendarList). */
 export const MOCK_CALENDARS = [
   { id: "primary", summary: "Personal", primary: true, backgroundColor: "#ec4899" },

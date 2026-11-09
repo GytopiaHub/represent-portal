@@ -10,6 +10,14 @@ export const PENDING_PATH = "/pending";
 export const NOT_APPROVED_PATH = "/not-approved";
 export const ONBOARDING_PATH = "/onboarding";
 
+/** Public, read-only pages anyone can open without signing in (R-ROLE-6). */
+export const EXPLORE_PATH = "/explore";
+
+/** True for pages a signed-out visitor may see. */
+export function isPublicPath(pathname: string): boolean {
+  return pathname === EXPLORE_PATH || pathname.startsWith(`${EXPLORE_PATH}/`);
+}
+
 /** The only page a non-active user may see, or null if they're active. */
 export function gatePathFor(user: SessionUser | null | undefined): string | null {
   if (!user || user.status === "removed") return LOGIN_PATH;

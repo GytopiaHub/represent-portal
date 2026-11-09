@@ -1,11 +1,12 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CenteredCard } from "@/components/layout/status-screen";
 import { GoogleSignInButton } from "@/features/account/components/google-sign-in-button";
 import { signInWithGoogle } from "@/server/account/actions";
-import { safeCallbackUrl } from "@/lib/access";
+import { EXPLORE_PATH, safeCallbackUrl } from "@/lib/access";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -61,6 +62,12 @@ export default function LoginPage(props: PageProps<"/login">) {
         <Suspense fallback={<GoogleSignInButtonStatic />}>
           <SignInForm searchParams={props.searchParams} />
         </Suspense>
+        <p className="text-center text-sm text-muted-foreground">
+          Not a member?{" "}
+          <Link href={EXPLORE_PATH} className="font-medium text-primary hover:underline">
+            Browse our covers
+          </Link>
+        </p>
       </CardContent>
       <CardFooter className="flex-col items-start gap-2 text-xs text-muted-foreground">
         <p>
