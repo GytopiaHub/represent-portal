@@ -77,6 +77,8 @@ src/
   lib/                 framework-free helpers usable anywhere (time, intervals, labels)
   auth.ts, proxy.ts    Auth.js config; route gating by user status (UX only)
 scripts/               db:reset and db:seed (fictional data only)
+  ui-options/          builds docs/ui/*.html: node scripts/ui-options/build.mjs docs/ui scripts/ui-options/batch1.mjs
+docs/                  SRS.md (requirements); ui/<page>.html: UI options per page (A = as built, chosen one marked)
 ```
 
 Imports only point down: `app → features → components, lib` and `app, features → server → db, lib`. ESLint enforces this (`eslint.config.mjs`). Type-only imports are always allowed.
