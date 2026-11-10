@@ -7,10 +7,6 @@ const nextConfig: NextConfig = {
   },
   cacheComponents: true,
   partialPrefetching: true,
-  images: {
-    // YouTube thumbnails (SRS §9.1)
-    remotePatterns: [{ protocol: "https", hostname: "i.ytimg.com" }],
-  },
   turbopack: {
     rules: {
       "*.css": {
