@@ -1,6 +1,6 @@
 # Security policy
 
-This repository is public, but the RepresENT Portal's security does not depend on the code being hidden. Access is protected by server-side authorization guards, Google sign-in with admin approval, an encrypted token store and a secret-protected cron endpoint.
+This repository is public, but the RepresENT Portal's security does not depend on the code being hidden. All database access is server-side only, and secrets live only in environment variables. Authentication is being rebuilt and is not in the app yet.
 
 ## Reporting a vulnerability
 
@@ -16,6 +16,6 @@ Include steps to reproduce and the impact you think it has. We aim to reply with
 
 ## For maintainers
 
-- Secrets live only in Vercel and GitHub Actions secrets. `.env*` is gitignored except `.env.example`.
+- Secrets live only in Vercel environment variables (and GitHub Actions secrets, if a workflow needs one). `.env*` is gitignored except `.env.example`.
 - Keep GitHub secret scanning, push protection and Dependabot alerts enabled.
-- Seed data and fixtures must stay fictional: no real member names, emails or calendar data.
+- Seed data and fixtures must stay fictional: no real member names, emails or personal data.
