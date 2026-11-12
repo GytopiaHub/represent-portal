@@ -1,8 +1,9 @@
 # RepresENT Portal — Software Requirements Specification
 
-**Version:** 2.0 · **Date:** 2026-11-10 · **Audience:** Claude (implementation agent) and RepresENT admins
+**Version:** 2.1 · **Date:** 2026-11-13 · **Audience:** Claude (implementation agent) and RepresENT admins
 
 > **Changelog**
+> - **v2.1:** Added the channel dashboard (section 6.1) as the home page, fed by the YouTube Data API. Added `YOUTUBE_API_KEY` and `YOUTUBE_CHANNEL_HANDLE`. UI option C chosen in `docs/ui/home.html`.
 > - **v2.0:** Reset the code to its foundation so features can be rebuilt and re-specified one at a time. This document now covers only the architecture. Feature requirements (roles, functional requirements, data model, jobs, routes, build plan, acceptance criteria) were removed, and each one is added back as its feature is rebuilt. Google OAuth (Auth.js) is deferred and will be added later. The only environment variable is the Neon connection string. The full v1.4 spec is in git history at `ed5875a`.
 > - **v1.4:** Added `docs/ui/`, which holds one HTML page of UI options per app page.
 > - **v1.3:** Added read-only **Visitor** access for people who aren't signed in.
@@ -46,13 +47,17 @@ A crew portal where members run song covers (crews, recruiting, scheduling), bro
 2. **Vercel Hobby:** functions have execution time limits. Keep each request's work short.
 
 ### 2.2 Environment variables
-`DATABASE_URL` (Neon connection string). Nothing else.
+| Variable | Purpose |
+|---|---|
+| `DATABASE_URL` | Neon connection string. |
+| `YOUTUBE_API_KEY` | YouTube Data API v3 key. Server only; never sent to the browser or put in a URL. Restrict it to the YouTube Data API v3 in Google Cloud Console. |
+| `YOUTUBE_CHANNEL_HANDLE` | Handle of the channel the dashboard reports on, e.g. `@Repres_ENT`. Resolved to the channel ID at runtime. If the handle is renamed on YouTube, update this. |
 
 ---
 
 ## 3. Security & Privacy
 
-- **SEC-1 Data access layer:** all database access goes through `src/server/**`. Client components never import the DB client. ESLint enforces the import layering (`eslint.config.mjs`). Authorization guards are added with auth.
+- **SEC-1 Data access layer:** all database access, and every call to a third-party API that needs a secret, goes through `src/server/**` (files there import `server-only`). Client components never import the DB client. ESLint enforces the import layering (`eslint.config.mjs`). Authorization guards are added with auth.
 - **SEC-2 Secrets:** all secrets live in environment variables (Vercel in production, `.env` locally), never in code.
 - **SEC-3 Mutations:** Server Actions get built-in CSRF protection from Next.js. Any custom POST route handlers check `Origin`.
 - **SEC-4 Public repository:** the source code is public, so:
@@ -87,5 +92,36 @@ A crew portal where members run song covers (crews, recruiting, scheduling), bro
 
 ### 5.2 Routes (App Router)
 ```
-app/page.tsx       Placeholder home page
+app/page.tsx       Channel dashboard (6.1)
 ```
+
+---
+
+## 6. Features
+
+### 6.1 Channel dashboard (home page)
+
+A page members open to check how the RepresENT YouTube channel is doing. Public while sign-in is deferred; every figure on it is already public on YouTube.
+
+**Layout:** option C in `docs/ui/home.html`. Two tabs:
+
+- **Overview:** subscriber count as the headline figure, with total views and video count under it. Tiles for days since the last upload, uploads this calendar year and median views per video. An uploads-per-month column chart for the last 12 months (with a table view). The 5 most recent uploads with views, likes and comments.
+- **Videos:** every public upload as a card (thumbnail, title, date, length, views, likes) with search by title and sort by newest, oldest, most viewed or most liked. Search and sort run in the browser. Each video links to YouTube.
+
+The page shows when the data was fetched, in the viewer's local time.
+
+**Data source** (`src/server/youtube/queries.ts`, YouTube Data API v3):
+
+1. `channels.list?forHandle=` resolves the handle to the uploads playlist and returns subscribers, views and video count (1 unit).
+2. `playlistItems.list` pages through the uploads playlist, 50 per page (1 unit per page).
+3. `videos.list` fetches snippet, duration and statistics in batches of 50 (1 unit per batch). Private and deleted uploads drop out here.
+
+About 7 units per refresh at 133 videos, against the free 10,000 units a day.
+
+**Derived figures** (`src/lib/channel-stats.ts`) are measured from the fetch time, not the request time, so they always match the cached data. Months and years are bucketed in `Asia/Singapore`.
+
+**Caching:** the whole fetch is one `"use cache"` function keyed by the handle. Success uses `cacheLife("hours")` (revalidate hourly, expire after a day); errors use `cacheLife("minutes")` so an outage clears quickly. The route prerenders as static with hourly revalidation.
+
+**Failure handling (NFR-4):** if the env vars are missing, the handle matches no channel, or the API fails, the page renders a short message in place of the data instead of an error page. API errors are logged with status and reason only.
+
+**Not yet covered:** subscriber and view history. The Data API only returns current totals, so growth charts need a daily snapshot saved to Neon (for example by a Vercel cron job), or the YouTube Analytics API with the channel owner's OAuth consent.

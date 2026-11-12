@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UI options: home (channel dashboard)</title>
+<!-- UI options for /. Three layouts for the channel dashboard, all on the stock
+     shadcn neutral dark theme. Content is fictional. To record a choice, set
+     CHOSEN below, e.g. {option:"A", date:"2026-11-13"}. -->
+<style>
+:root{--bg:#0d0d0f;--panel:#18181b;--ink:#ececec;--muted:#9a9a9a;--line:#2a2a2e;--ok:#4cc27e}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;padding:20px 16px 40px}
+.wrap{max-width:1320px;margin:0 auto}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin-bottom:14px}
+h1{font-size:1.4rem;margin:0}.meta{color:var(--muted);font-size:13px}code{font:12.5px ui-monospace,Consolas,monospace;background:#ffffff10;padding:1px 6px;border-radius:4px}
+.status{margin-left:auto;font-size:13px;font-weight:600;padding:3px 10px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.status.done{border-color:var(--ok);color:var(--ok)}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px;flex-wrap:wrap}
+.seg button{font:inherit;font-weight:600;color:var(--muted);background:none;border:0;border-radius:7px;padding:6px 12px;cursor:pointer}
+.seg button[aria-pressed=true]{background:#ffffff14;color:var(--ink)}
+.badge{display:inline-block;margin-left:6px;font-size:11px;font-weight:700;color:#0d0d0f;background:var(--ok);border-radius:99px;padding:0 7px;vertical-align:1px}
+.note{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:14px}
+.note p{margin:0;color:var(--muted)}
+.stage{display:flex;justify-content:center;overflow:hidden}.frame{position:relative;flex-shrink:0}
+iframe{border:0;background:#000;border-radius:14px;box-shadow:0 0 0 1px var(--line),0 20px 60px #0008;transform-origin:top left;display:block}
+.dims{color:var(--muted);font-size:12px;text-align:center;margin-top:8px}
+</style></head><body><div class="wrap">
+<header><h1>Home: channel dashboard</h1><span class="meta">Route <code>/</code> · Source <code>src/app/page.tsx</code></span><span class="status" id="status"></span></header>
+<div class="bar"><div class="seg" id="tabs" role="group" aria-label="Option"></div>
+<div class="seg" id="sizes" role="group" aria-label="Viewport"><button data-w="390" data-h="844">Phone</button><button data-w="1280" data-h="800">Desktop</button></div></div>
+<div class="note" id="note"></div>
+<div class="stage" id="stage"><div class="frame" id="frame"><iframe id="view" title="Option preview" sandbox="allow-scripts"></iframe></div></div>
+<div class="dims" id="dims"></div>
+</div>
+
+<script type="text/plain" id="app-css">
+:root{--radius:.625rem;--background:oklch(.145 0 0);--foreground:oklch(.985 0 0);--card:oklch(.205 0 0);--primary:oklch(.922 0 0);--primary-foreground:oklch(.205 0 0);--muted:oklch(.269 0 0);--muted-foreground:oklch(.708 0 0);--border:oklch(1 0 0/10%);--input:oklch(1 0 0/15%);--chart-1:oklch(.488 .243 264.376)}
+*{box-sizing:border-box}html{color-scheme:dark}
+body{margin:0;background:var(--background);color:var(--foreground);font:14px/1.5 Inter,"Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+h1,h2,h3,p{margin:0}a{color:inherit;text-decoration:none}
+.page{max-width:1240px;margin:0 auto;padding:20px 16px 48px;display:flex;flex-direction:column;gap:16px}
+.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.logo{width:36px;height:36px;border-radius:10px;background:#0b0b10;border:2px solid #9d6bff;display:grid;place-items:center;font:900 11px Arial;color:#ff4fa0;flex-shrink:0}
+.h1{font-size:22px;font-weight:700;letter-spacing:-.01em}.h2{font-size:15px;font-weight:600}
+.muted{color:var(--muted-foreground)}.xs{font-size:12px}.sm{font-size:13px}.ml{margin-left:auto}
+.card{background:var(--card);border-radius:calc(var(--radius)*1.4);box-shadow:0 0 0 1px var(--border);padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media(min-width:900px){.tiles.six{grid-template-columns:repeat(6,1fr)}.tiles.three{grid-template-columns:repeat(3,1fr)}}
+.tile{gap:4px}.tile .v{font-size:22px;font-weight:600;letter-spacing:-.01em}
+.hero{font-size:48px;font-weight:600;line-height:1;letter-spacing:-.02em}
+.two{display:grid;gap:16px}@media(min-width:900px){.two{grid-template-columns:1.4fr 1fr}}
+.side{display:grid;gap:16px}@media(min-width:1000px){.side{grid-template-columns:340px 1fr;align-items:start}.side>aside{position:sticky;top:16px}}
+.stack{display:flex;flex-direction:column;gap:16px}
+.input{height:40px;flex:1;min-width:160px;border:1px solid var(--input);background:oklch(1 0 0/4.5%);border-radius:var(--radius);padding:0 12px;color:inherit;font:inherit}
+.input::placeholder{color:var(--muted-foreground)}
+.select{height:40px;border:1px solid var(--input);background:oklch(1 0 0/4.5%);border-radius:var(--radius);padding:0 10px;color:inherit;font:inherit}
+.tools{display:flex;gap:8px;flex-wrap:wrap}
+.thumb{position:relative;aspect-ratio:16/9;border-radius:6px;overflow:hidden;background:var(--muted);flex-shrink:0}
+.thumb .img{position:absolute;inset:0}
+.dur{position:absolute;right:4px;bottom:4px;background:oklch(0 0 0/.75);color:#fff;font-size:10px;font-weight:600;padding:0 5px;border-radius:3px}
+.title{font-weight:500;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.rank{display:grid;grid-template-columns:20px 72px 1fr auto;gap:10px;align-items:center;min-height:44px}
+.num{font-variant-numeric:tabular-nums}.r{text-align:right}
+table{width:100%;border-collapse:collapse}th,td{padding:8px;border-top:1px solid var(--border);text-align:left;vertical-align:middle}
+th{font-size:12px;font-weight:500;color:var(--muted-foreground);border-top:0}
+td.r,th.r{text-align:right}.hide-sm{display:none}@media(min-width:760px){.hide-sm{display:table-cell}}
+.vt td:first-child{width:96px}@media(min-width:760px){.vt td:first-child{width:128px}}
+.grid{display:grid;grid-template-columns:1fr;gap:16px}@media(min-width:560px){.grid{grid-template-columns:repeat(2,1fr)}}@media(min-width:1200px){.grid{grid-template-columns:repeat(3,1fr)}}
+.vcard{display:flex;flex-direction:column;gap:6px}.vcard .thumb{border-radius:var(--radius)}
+.tabs{display:inline-flex;background:var(--muted);border-radius:var(--radius);padding:3px;gap:3px}
+.tabs span{height:36px;display:inline-flex;align-items:center;padding:0 14px;border-radius:calc(var(--radius) - 3px);font-weight:500;color:var(--muted-foreground)}
+.tabs .on{background:var(--background);color:var(--foreground)}
+.link{font-size:13px;text-decoration:underline;text-underline-offset:3px;color:var(--muted-foreground)}
+svg text{fill:var(--muted-foreground);font:11px Inter,system-ui,sans-serif}
+</script>
+
+<script>
+const CHOSEN = { option: "C", date: "2026-11-13" };
+const OPTIONS = [
+  { key: "A", name: "Overview, then list", note: "Six stat tiles across the top, then the uploads chart beside the top 5, then recent uploads with likes and comments, then the full video table with search and sort. Everything on one scroll, in reading order." },
+  { key: "B", name: "Summary sidebar", note: "On desktop a sticky left column holds the stats, chart and top 5, and the right side is the full video list as cards. The numbers stay visible while you scroll the videos. On phone it stacks into one column." },
+  { key: "C", name: "Overview and videos tabs", note: "Subscribers as one large headline figure, then tiles, chart and recent uploads under an Overview tab. The full list sits under a Videos tab. Shortest page, but the list is one tap away." },
+];
+
+// Fictional covers. Song and group names are made up. Numbers are illustrative.
+const SONGS = [["Starlight Drive","NOVA9"],["Paper Hearts","Lumen"],["Overdrive","KIRA"],["Moonwalk Club","Hexa"],["Glass Garden","Orbit Girls"],["Red Signal","VANTA"],["Afterglow","Sole"],["Run It Back","T1ME"],["Blue Hour","Mirae"],["Fever Dream","ZETA"],["Neon Tiger","Pulse"],["Cherry Bomb Pop","Aria5"]];
+const KINDS = ["Dance cover by RepresENT","One take dance cover | RepresENT","Dance practice | RepresENT","Busking performance | RepresENT"];
+const NOW = Date.UTC(2026,10,13);
+const VIDS = SONGS.flatMap(([s,g],i)=>[0,1].map(j=>{
+  const n=i*2+j, d=new Date(NOW - (4 + n*15 + (n*7)%9)*864e5), views=Math.round(300+((n*7919)%6200));
+  return {title:`[DANCE IN PUBLIC] ${g} - '${s}' ${KINDS[n%4]}`, date:d, dur:`${2+n%3}:${String(7+n*13%50).padStart(2,"0")}`, views, likes:Math.round(views*.06), comments:Math.round(views*.004)+1, hue:(n*37)%360};
+}));
+const fmtDate=d=>d.toLocaleDateString("en-SG",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"});
+const compact=v=>v<10000?v.toLocaleString("en"):(v/1000).toFixed(1).replace(/\.0$/,"")+"K";
+const thumb=v=>`<div class="thumb"><div class="img" style="background:linear-gradient(135deg,oklch(.32 .03 ${v.hue}),oklch(.2 .01 ${v.hue}))"></div><span class="dur">${v.dur}</span></div>`;
+const TOP=[...VIDS].sort((a,b)=>b.views-a.views).slice(0,5), RECENT=VIDS.slice(0,5);
+const STATS=[["Subscribers","643"],["Total views","163.5K"],["Videos","133"],["Since last upload","4 days"],["Uploads this year","21"],["Median views","1,040"]];
+const MONTHS=["Dec","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov"], COUNTS=[1,2,1,3,2,0,2,4,2,1,3,1];
+
+const tiles=(list,cls)=>`<div class="tiles ${cls}">${list.map(([l,v])=>`<div class="card tile"><p class="muted xs">${l}</p><p class="v">${v}</p></div>`).join("")}</div>`;
+function chart(){
+  const W=520,H=180,pl=24,pb=22,pt=16,max=Math.max(...COUNTS),step=(W-pl)/12,bw=Math.min(24,step*.55),peak=COUNTS.indexOf(max);
+  const y=v=>H-pb-(v/max)*(H-pb-pt);
+  const grid=[0,2,4].map(t=>`<line x1="${pl}" x2="${W}" y1="${y(t)}" y2="${y(t)}" stroke="oklch(1 0 0 / 10%)"/><text x="${pl-8}" y="${y(t)+4}" text-anchor="end">${t}</text>`).join("");
+  const bars=COUNTS.map((c,i)=>{const x=pl+i*step+(step-bw)/2,top=y(c),h=H-pb-top;
+    const bar=c?`<path d="M${x},${H-pb}V${top+4}q0,-4 4,-4h${bw-8}q4,0 4,4V${H-pb}Z" fill="var(--chart-1)"/>`:"";
+    return `<g><title>${MONTHS[i]}: ${c} upload${c===1?"":"s"}</title><rect x="${pl+i*step}" y="${pt}" width="${step}" height="${H-pt}" fill="transparent"/>${bar}${i===peak?`<text x="${x+bw/2}" y="${top-5}" text-anchor="middle" style="fill:var(--foreground)">${c}</text>`:""}<text x="${x+bw/2}" y="${H-6}" text-anchor="middle">${MONTHS[i]}</text></g>`}).join("");
+  return `<div class="card"><div class="top"><h2 class="h2">Uploads per month</h2><span class="muted xs ml">Last 12 months</span></div><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Uploads per month, last 12 months">${grid}${bars}</svg><a class="link" href="#">Show as table</a></div>`;
+}
+const top5=()=>`<div class="card"><h2 class="h2">Most viewed</h2>${TOP.map((v,i)=>`<a class="rank" href="#"><span class="muted num">${i+1}</span>${thumb(v)}<p class="title sm">${v.title}</p><span class="num sm">${compact(v.views)}</span></a>`).join("")}</div>`;
+const recent=()=>`<div class="card"><h2 class="h2">Recent uploads</h2><table><thead><tr><th>Video</th><th class="r">Views</th><th class="r">Likes</th><th class="r hide-sm">Comments</th></tr></thead><tbody>${RECENT.map(v=>`<tr><td><p class="title sm">${v.title}</p><p class="muted xs">${fmtDate(v.date)}</p></td><td class="r num">${v.views.toLocaleString()}</td><td class="r num">${v.likes}</td><td class="r num hide-sm">${v.comments}</td></tr>`).join("")}</tbody></table></div>`;
+const tools=`<div class="tools"><input class="input" placeholder="Search videos"><select class="select"><option>Newest first</option><option>Oldest first</option><option>Most viewed</option><option>Most liked</option></select></div>`;
+const table=()=>`<div class="card"><div class="top"><h2 class="h2">All videos</h2><span class="muted xs">133</span></div>${tools}<table class="vt"><thead><tr><th></th><th>Title</th><th class="hide-sm">Published</th><th class="r">Views</th><th class="r hide-sm">Likes</th></tr></thead><tbody>${VIDS.map(v=>`<tr><td>${thumb(v)}</td><td><p class="title sm">${v.title}</p></td><td class="muted sm hide-sm">${fmtDate(v.date)}</td><td class="r num sm">${compact(v.views)}</td><td class="r num sm hide-sm">${v.likes}</td></tr>`).join("")}</tbody></table></div>`;
+const cards=()=>`<div class="stack"><div class="top"><h2 class="h2">All videos</h2><span class="muted xs">133</span></div>${tools}<div class="grid">${VIDS.map(v=>`<a class="vcard" href="#">${thumb(v)}<p class="title sm">${v.title}</p><p class="muted xs">${fmtDate(v.date)} · ${compact(v.views)} views · ${v.likes} likes</p></a>`).join("")}</div></div>`;
+const head=`<div class="top"><div class="logo">ENT</div><div><h1 class="h1">Channel dashboard</h1><p class="muted sm">RepresENT on YouTube</p></div><span class="muted xs ml">Updated 13 Nov, 2:40 pm</span></div>`;
+
+const RENDER = {
+  A: () => `<main class="page">${head}${tiles(STATS,"six")}<div class="two">${chart()}${top5()}</div>${recent()}${table()}</main>`,
+  B: () => `<main class="page">${head}<div class="side"><aside class="stack">${tiles(STATS,"")}${chart()}${top5()}</aside>${cards()}</div></main>`,
+  C: () => `<main class="page">${head}<div class="tabs"><span class="on">Overview</span><span>Videos</span></div>
+    <div class="card"><p class="muted xs">Subscribers</p><p class="hero">643</p><p class="muted sm">163.5K total views across 133 videos</p></div>
+    ${tiles(STATS.slice(3),"three")}<div class="two">${chart()}${recent()}</div></main>`,
+};
+
+const $ = (id) => document.getElementById(id);
+let cur = "A", size = { w: 390, h: 844 };
+try { const s = JSON.parse(localStorage.getItem("ui-opt-size") || "null"); if (s) size = s; } catch (e) {}
+const [hOpt, hSize] = location.hash.slice(1).split("/");
+if (OPTIONS.some((o) => o.key === hOpt)) cur = hOpt;
+if (hSize === "desktop") size = { w: 1280, h: 800 }; else if (hSize === "phone") size = { w: 390, h: 844 };
+$("status").textContent = CHOSEN ? "Chosen: " + CHOSEN.option + " · " + CHOSEN.date : "Not chosen yet";
+if (CHOSEN) $("status").classList.add("done");
+OPTIONS.forEach((o) => {
+  const b = document.createElement("button");
+  b.dataset.k = o.key;
+  b.innerHTML = o.key + " · " + o.name + (CHOSEN && CHOSEN.option === o.key ? '<span class="badge">Chosen</span>' : "");
+  b.onclick = () => { cur = o.key; render(); };
+  $("tabs").appendChild(b);
+});
+document.querySelectorAll("#sizes button").forEach((b) => b.onclick = () => {
+  size = { w: +b.dataset.w, h: +b.dataset.h };
+  try { localStorage.setItem("ui-opt-size", JSON.stringify(size)); } catch (e) {}
+  render();
+});
+function fit() {
+  const s = Math.min(1, $("stage").clientWidth / size.w), f = $("view");
+  f.style.width = size.w + "px"; f.style.height = size.h + "px"; f.style.transform = "scale(" + s + ")";
+  $("frame").style.width = size.w * s + "px"; $("frame").style.height = size.h * s + "px";
+  $("dims").textContent = size.w + " x " + size.h + (s < 1 ? " (shown at " + Math.round(s * 100) + "%)" : "");
+}
+function render() {
+  const o = OPTIONS.find((x) => x.key === cur);
+  document.querySelectorAll("#tabs button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.k === cur));
+  document.querySelectorAll("#sizes button").forEach((b) => b.setAttribute("aria-pressed", +b.dataset.w === size.w));
+  $("note").innerHTML = "<p><b>" + o.key + " · " + o.name + ".</b> " + o.note + "</p>";
+  $("view").srcdoc = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>' +
+    $("app-css").textContent + "</style></head><body>" + RENDER[cur]() + "</body></html>";
+  fit();
+}
+addEventListener("resize", fit);
+render();
+</script></body></html>
