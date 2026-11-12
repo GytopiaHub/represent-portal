@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
-type Month = { key: string; label: string; count: number };
+type Bucket = { key: string; label: string; count: number };
 
 const W = 520;
 const H = 180;
@@ -20,10 +20,12 @@ export function UploadsChart({
   months,
   title = "Uploads per month",
   description,
+  bucketLabel = "Month",
 }: {
-  months: Month[];
+  months: Bucket[];
   title?: string;
   description?: string;
+  bucketLabel?: "Month" | "Year";
 }) {
   const max = Math.max(1, ...months.map((m) => m.count));
   const ticks = niceTicks(max);
@@ -87,7 +89,7 @@ export function UploadsChart({
           <table className="mt-2 w-full">
             <thead>
               <tr className="text-xs text-muted-foreground">
-                <th className="py-1 text-left font-medium">Month</th>
+                <th className="py-1 text-left font-medium">{bucketLabel}</th>
                 <th className="py-1 text-right font-medium">Uploads</th>
               </tr>
             </thead>

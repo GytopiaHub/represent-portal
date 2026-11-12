@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UI options: home v2 (single view)</title>
+<!-- UI options for / after removing the Overview, Videos and Year tabs. One
+     period control drives the tiles, chart, top 5 and video list. Stock shadcn
+     neutral dark theme. Content is fictional. The previews are interactive:
+     change the period, click chart columns (option C), press Show more.
+     To record a choice, set CHOSEN below, e.g. {option:"A", date:"2026-11-13"}. -->
+<style>
+:root{--bg:#0d0d0f;--panel:#18181b;--ink:#ececec;--muted:#9a9a9a;--line:#2a2a2e;--ok:#4cc27e}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;padding:20px 16px 40px}
+.wrap{max-width:1320px;margin:0 auto}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin-bottom:14px}
+h1{font-size:1.4rem;margin:0}.meta{color:var(--muted);font-size:13px}code{font:12.5px ui-monospace,Consolas,monospace;background:#ffffff10;padding:1px 6px;border-radius:4px}
+.status{margin-left:auto;font-size:13px;font-weight:600;padding:3px 10px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.status.done{border-color:var(--ok);color:var(--ok)}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px;flex-wrap:wrap}
+.seg button{font:inherit;font-weight:600;color:var(--muted);background:none;border:0;border-radius:7px;padding:6px 12px;cursor:pointer}
+.seg button[aria-pressed=true]{background:#ffffff14;color:var(--ink)}
+.badge{display:inline-block;margin-left:6px;font-size:11px;font-weight:700;color:#0d0d0f;background:var(--ok);border-radius:99px;padding:0 7px;vertical-align:1px}
+.note{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:14px}
+.note p{margin:0;color:var(--muted)}
+.stage{display:flex;justify-content:center;overflow:hidden}.frame{position:relative;flex-shrink:0}
+iframe{border:0;background:#000;border-radius:14px;box-shadow:0 0 0 1px var(--line),0 20px 60px #0008;transform-origin:top left;display:block}
+.dims{color:var(--muted);font-size:12px;text-align:center;margin-top:8px}
+</style></head><body><div class="wrap">
+<header><h1>Home v2: single view</h1><span class="meta">Route <code>/</code> · Source <code>src/app/page.tsx</code> · Replaces the tabs from <code>home.html</code></span><span class="status" id="status"></span></header>
+<div class="bar"><div class="seg" id="tabs" role="group" aria-label="Option"></div>
+<div class="seg" id="sizes" role="group" aria-label="Viewport"><button data-w="390" data-h="844">Phone</button><button data-w="1280" data-h="800">Desktop</button></div></div>
+<div class="note" id="note"></div>
+<div class="stage" id="stage"><div class="frame" id="frame"><iframe id="view" title="Option preview" sandbox="allow-scripts"></iframe></div></div>
+<div class="dims" id="dims"></div>
+</div>
+
+<script type="text/plain" id="app-css">
+:root{--radius:.625rem;--background:oklch(.145 0 0);--foreground:oklch(.985 0 0);--card:oklch(.205 0 0);--muted:oklch(.269 0 0);--muted-foreground:oklch(.708 0 0);--border:oklch(1 0 0/10%);--input:oklch(1 0 0/15%);--chart-1:oklch(.488 .243 264.376)}
+*{box-sizing:border-box}html{color-scheme:dark}
+body{margin:0;background:var(--background);color:var(--foreground);font:14px/1.5 Inter,"Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+h1,h2,p{margin:0}a{color:inherit;text-decoration:none}button{font:inherit;color:inherit}
+.page{max-width:1240px;margin:0 auto;padding:20px 16px 48px;display:flex;flex-direction:column;gap:16px}
+.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.logo{width:36px;height:36px;border-radius:10px;background:#0b0b10;border:2px solid #9d6bff;display:grid;place-items:center;font:900 11px Arial;color:#ff4fa0;flex-shrink:0}
+.h1{font-size:22px;font-weight:700;letter-spacing:-.01em}.h2{font-size:15px;font-weight:600}
+.muted{color:var(--muted-foreground)}.xs{font-size:12px}.sm{font-size:13px}.ml{margin-left:auto}
+.card{background:var(--card);border-radius:calc(var(--radius)*1.4);box-shadow:0 0 0 1px var(--border);padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.hero{font-size:48px;font-weight:600;line-height:1;letter-spacing:-.02em}
+.chan{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 24px}
+.chan .facts{display:flex;flex-wrap:wrap;gap:4px 20px}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}@media(min-width:900px){.tiles{grid-template-columns:repeat(4,1fr)}}
+.tile{gap:4px}.tile .v{font-size:22px;font-weight:600;letter-spacing:-.01em}
+.two{display:grid;gap:16px}@media(min-width:900px){.two{grid-template-columns:1.4fr 1fr}}
+.stack{display:flex;flex-direction:column;gap:12px}
+.input{height:40px;flex:1;min-width:140px;border:1px solid var(--input);background:oklch(1 0 0/4.5%);border-radius:var(--radius);padding:0 12px;color:inherit;font:inherit}
+.input::placeholder{color:var(--muted-foreground)}
+.select{height:40px;border:1px solid var(--input);background:oklch(1 0 0/4.5%);border-radius:var(--radius);padding:0 10px;color:inherit;font:inherit}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px}
+@media(min-width:760px){.chips{flex-wrap:wrap;overflow:visible;margin:0;padding:0}}
+.chip{flex-shrink:0;height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--input);background:none;cursor:pointer;font-weight:500;color:var(--muted-foreground);white-space:nowrap}
+.chip[aria-pressed=true]{background:var(--foreground);color:var(--background);border-color:var(--foreground)}
+.sticky{position:sticky;top:0;z-index:5;background:var(--background);padding:10px 0;margin:-10px 0;border-bottom:1px solid var(--border)}
+.btn{height:40px;padding:0 16px;border-radius:999px;border:1px solid var(--input);background:oklch(1 0 0/4.5%);cursor:pointer;font-weight:500}
+.filter{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 6px 0 12px;border-radius:999px;background:var(--muted);font-size:13px}
+.filter button{width:24px;height:24px;border-radius:999px;border:0;background:none;cursor:pointer;color:var(--muted-foreground)}
+.thumb{position:relative;aspect-ratio:16/9;border-radius:6px;overflow:hidden;background:var(--muted);flex-shrink:0}
+.thumb .img{position:absolute;inset:0}
+.dur{position:absolute;right:4px;bottom:4px;background:oklch(0 0 0/.75);color:#fff;font-size:10px;font-weight:600;padding:0 5px;border-radius:3px}
+.title{font-weight:500;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.rank{display:grid;grid-template-columns:18px 1fr auto;gap:10px;align-items:center;min-height:44px;border-top:1px solid var(--border);padding-top:6px}
+.rank:first-of-type{border-top:0;padding-top:0}
+.num{font-variant-numeric:tabular-nums}
+.grid{display:grid;grid-template-columns:1fr;gap:20px 16px}@media(min-width:560px){.grid{grid-template-columns:repeat(2,1fr)}}@media(min-width:1000px){.grid{grid-template-columns:repeat(4,1fr)}}
+.vcard{display:flex;flex-direction:column;gap:6px}.vcard .thumb{border-radius:var(--radius)}
+.link{font-size:13px;text-decoration:underline;text-underline-offset:3px;color:var(--muted-foreground)}
+.center{display:flex;justify-content:center}
+svg text{fill:var(--muted-foreground);font:11px Inter,system-ui,sans-serif}
+svg .hit{cursor:pointer}svg .hit:hover+path,svg .hit:focus+path{opacity:.75}
+svg .sel{fill:var(--foreground)}
+.empty{padding:32px 0;text-align:center;color:var(--muted-foreground)}
+</script>
+
+<script type="text/plain" id="app-js">
+// Fictional covers. Song and group names are made up. Numbers are illustrative.
+const SONGS=["Starlight Drive","Paper Hearts","Overdrive","Moonwalk Club","Glass Garden","Red Signal","Afterglow","Run It Back","Blue Hour","Fever Dream","Neon Tiger","Cherry Bomb Pop","Silver Lining","Wildflower","Gravity","Sugar Rush","Daydream","Echo","Satellite","Lemonade"];
+const GROUPS=["NOVA9","Lumen","KIRA","Hexa","Orbit Girls","VANTA","Sole","T1ME","Mirae","ZETA","Pulse","Aria5"];
+const KINDS=["Dance cover by RepresENT","One take dance cover | RepresENT","Dance practice | RepresENT","Busking performance | RepresENT"];
+const DAY=864e5, NOW=Date.UTC(2026,10,13);
+let seed=7; const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+const VIDS=[]; {let t=NOW-4*DAY,n=0; while(t>Date.UTC(2019,2,1)){const age=(NOW-t)/DAY/365, views=Math.round((400+rnd()*2600)*(1+age*.6)*(rnd()<.08?6:1));
+  VIDS.push({title:`[DANCE IN PUBLIC] ${GROUPS[n%12]} - '${SONGS[(n*7)%20]}' ${KINDS[n%4]}`,date:new Date(t),dur:`${2+n%3}:${String(7+n*13%50).padStart(2,"0")}`,views,likes:Math.round(views*(.04+rnd()*.04)),hue:(n*37)%360});
+  t-=(10+rnd()*(age>4?60:30))*DAY; n++;}}
+const YEARS=[...new Set(VIDS.map(v=>v.date.getUTCFullYear()))].sort((a,b)=>b-a);
+const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const fmtDate=d=>d.toLocaleDateString("en-SG",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"});
+const compact=v=>v<10000?v.toLocaleString("en"):(v/1000).toFixed(1).replace(/\.0$/,"")+"K";
+const median=a=>{if(!a.length)return 0;const s=[...a].sort((x,y)=>x-y),m=s.length>>1;return s.length%2?s[m]:Math.round((s[m-1]+s[m])/2)};
+const thumb=v=>`<div class="thumb"><div class="img" style="background:linear-gradient(135deg,oklch(.32 .03 ${v.hue}),oklch(.2 .01 ${v.hue}))"></div><span class="dur">${v.dur}</span></div>`;
+
+const S={period:"12m",month:null,limit:24};
+const PERIODS=[["12m","Last 12 months"],...YEARS.map(y=>[String(y),String(y)]),["all","All time"]];
+const label=p=>PERIODS.find(x=>x[0]===p)[1];
+const start12=Date.UTC(2025,11,1);
+function inPeriod(v,p){if(p==="all")return true;if(p==="12m")return v.date>=start12;return v.date.getUTCFullYear()===+p}
+function buckets(p){
+  if(p==="all")return [...YEARS].reverse().map(y=>({key:"y"+y,label:String(y).slice(2),full:String(y),count:VIDS.filter(v=>v.date.getUTCFullYear()===y).length,year:y}));
+  if(p==="12m")return Array.from({length:12},(_,i)=>{const d=new Date(Date.UTC(2025,11+i,1)),y=d.getUTCFullYear(),m=d.getUTCMonth();return{key:y+"-"+m,label:MON[m],full:MON[m]+" "+y,count:VIDS.filter(v=>v.date.getUTCFullYear()===y&&v.date.getUTCMonth()===m).length}});
+  return MON.map((l,m)=>({key:p+"-"+m,label:l,full:l+" "+p,count:VIDS.filter(v=>v.date.getUTCFullYear()===+p&&v.date.getUTCMonth()===m).length}));
+}
+function compare(p,count){
+  if(p==="all")return "since "+fmtDate(VIDS[VIDS.length-1].date);
+  if(p==="12m"){const c=VIDS.filter(v=>v.date>=Date.UTC(2024,11,1)&&v.date<start12).length;return "previous 12 months: "+c}
+  const y=+p;if(!YEARS.includes(y-1))return "";
+  const c=VIDS.filter(v=>{const d=v.date;return d.getUTCFullYear()===y-1&&(y!==2026||d<Date.UTC(2025,10,14))}).length;
+  return (y-1)+(y===2026?" to 13 Nov":"")+": "+c;
+}
+const head=`<div class="top"><div class="logo">ENT</div><div><h1 class="h1">Channel dashboard</h1><p class="muted sm">RepresENT on YouTube</p></div><span class="muted xs ml">Updated 13 Nov, 2:40 pm</span></div>`;
+const channel=`<div class="card"><div class="chan"><div><p class="muted xs">Subscribers</p><p class="hero">643</p></div><div class="facts muted sm"><span>163.5K channel views</span><span>${VIDS.length} videos</span><span>Last upload 4 days ago</span></div></div></div>`;
+const chips=()=>`<div class="chips" role="group" aria-label="Period">${PERIODS.map(([k,l])=>`<button class="chip" data-period="${k}" aria-pressed="${S.period===k}">${l}</button>`).join("")}</div>`;
+const select=(cls="select")=>`<select class="${cls}" data-period-select aria-label="Period">${PERIODS.map(([k,l])=>`<option value="${k}"${S.period===k?" selected":""}>${l}</option>`).join("")}</select>`;
+function tiles(list){const n=list.length;
+  return `<div class="tiles">${[["Uploads",n.toLocaleString("en"),compare(S.period,n)],["Views on these uploads",compact(list.reduce((s,v)=>s+v.views,0)),"lifetime counts"],["Likes",compact(list.reduce((s,v)=>s+v.likes,0)),""],["Median views",compact(median(list.map(v=>v.views))),"per video"]]
+  .map(([l,v,h])=>`<div class="card tile"><p class="muted xs">${l}</p><p class="v num">${v}</p>${h?`<p class="muted xs">${h}</p>`:""}</div>`).join("")}</div>`;}
+function chart(clickable){
+  const B=buckets(S.period),W=520,H=180,pl=24,pb=22,pt=16,max=Math.max(1,...B.map(b=>b.count)),stepT=Math.max(1,Math.ceil(max/2)),top=stepT*2,step=(W-pl)/B.length,bw=Math.min(24,step*.55);
+  const peak=B.reduce((bi,b,i)=>b.count>B[bi].count?i:bi,0),y=v=>H-pb-(v/top)*(H-pb-pt);
+  const grid=[0,stepT,top].map(t=>`<line x1="${pl}" x2="${W}" y1="${y(t)}" y2="${y(t)}" stroke="oklch(1 0 0 / 10%)"/><text x="${pl-8}" y="${y(t)+4}" text-anchor="end">${t}</text>`).join("");
+  const bars=B.map((b,i)=>{const x=pl+i*step+(step-bw)/2,bt=y(b.count),r=Math.min(4,(H-pb-bt)/2),sel=S.month===b.key;
+    const act=clickable&&b.count?(b.year?`data-period="${b.year}"`:`data-month="${b.key}"`):"";
+    return `<g><title>${b.full}: ${b.count} upload${b.count===1?"":"s"}${act?(b.year?", show this year":", filter the list"):""}</title><rect class="${act?"hit":""}" ${act} ${act?'tabindex="0" role="button" aria-label="'+b.full+', '+b.count+' uploads"':""} x="${pl+i*step}" y="${pt}" width="${step}" height="${H-pt}" fill="transparent"/>${b.count?`<path class="${sel?"sel":""}" d="M${x},${H-pb}V${bt+r}q0,-${r} ${r},-${r}h${bw-2*r}q${r},0 ${r},${r}V${H-pb}Z" fill="var(--chart-1)"/>`:""}${i===peak&&b.count?`<text x="${x+bw/2}" y="${bt-5}" text-anchor="middle" style="fill:var(--foreground)">${b.count}</text>`:""}<text x="${x+bw/2}" y="${H-6}" text-anchor="middle">${b.label}</text></g>`}).join("");
+  const title=S.period==="all"?"Uploads per year":"Uploads per month";
+  const hint=clickable?(S.period==="all"?"Pick a year to open it":"Pick a month to filter the list"):label(S.period);
+  return `<div class="card"><div class="top"><h2 class="h2">${title}</h2><span class="muted xs ml">${hint}</span></div><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${title}">${grid}${bars}</svg><a class="link" href="#">Show as table</a></div>`;
+}
+const top5=list=>{const t=[...list].sort((a,b)=>b.views-a.views).slice(0,5);
+  return `<div class="card"><h2 class="h2">Top 5, ${label(S.period).toLowerCase()}</h2>${t.length?`<div class="stack" style="gap:6px">${t.map((v,i)=>`<a class="rank" href="#"><span class="muted num sm">${i+1}</span><p class="title sm">${v.title}</p><span class="num sm">${compact(v.views)}</span></a>`).join("")}</div>`:`<p class="muted sm">No uploads in this period.</p>`}</div>`;};
+const sort=`<select class="select" aria-label="Sort videos"><option>Newest first</option><option>Oldest first</option><option>Most viewed</option><option>Most liked</option></select>`;
+const search=`<input class="input" type="search" placeholder="Search videos" aria-label="Search videos">`;
+function grid(list){const shown=list.slice(0,S.limit);
+  if(!list.length)return `<p class="empty">No uploads in this period.</p>`;
+  return `<p class="muted xs">${shown.length<list.length?`Showing ${shown.length} of ${list.length} videos`:`${list.length} videos`}</p><div class="grid">${shown.map(v=>`<a class="vcard" href="#">${thumb(v)}<p class="title sm">${v.title}</p><p class="muted xs">${fmtDate(v.date)} · ${compact(v.views)} views · ${v.likes} likes</p></a>`).join("")}</div>${shown.length<list.length?`<div class="center"><button class="btn" data-more>Show more</button></div>`:""}`;}
+
+const RENDER={
+  A(list){return `${head}${channel}${chips()}${tiles(list)}<div class="two">${chart(false)}${top5(list)}</div>
+    <section class="stack"><h2 class="h2">Videos, ${label(S.period).toLowerCase()}</h2><div class="tools">${search}${sort}</div>${grid(list)}</section>`},
+  B(list){return `${head}${channel}${tiles(list)}<div class="two">${chart(false)}${top5(list)}</div>
+    <div class="sticky"><div class="tools">${select()}${search}${sort}</div></div>
+    <section class="stack">${grid(list)}</section>`},
+  C(list){const B=buckets(S.period),m=S.month&&B.find(b=>b.key===S.month);
+    const shown=m?list.filter(v=>`${v.date.getUTCFullYear()}-${v.date.getUTCMonth()}`===S.month):list;
+    return `${head}${channel}<div class="tools"><span class="muted sm">Period</span>${select()}</div>${tiles(list)}<div class="two">${chart(true)}${top5(list)}</div>
+    <section class="stack"><div class="top"><h2 class="h2">Videos</h2>${m?`<span class="filter">${m.full}<button data-clear aria-label="Clear month filter">x</button></span>`:""}</div><div class="tools">${search}${sort}</div>${grid(shown)}</section>`},
+};
+function render(){const list=VIDS.filter(v=>inPeriod(v,S.period));document.getElementById("app").innerHTML=RENDER[OPT](list)}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-period],[data-month],[data-more],[data-clear]");if(!t)return;e.preventDefault();
+  if(t.dataset.period){S.period=t.dataset.period;S.month=null;S.limit=24}
+  else if(t.dataset.month){S.month=S.month===t.dataset.month?null:t.dataset.month;S.limit=24}
+  else if("more" in t.dataset){S.limit+=24}
+  else if("clear" in t.dataset){S.month=null}
+  render()});
+document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.matches("rect.hit")){e.preventDefault();e.target.dispatchEvent(new MouseEvent("click",{bubbles:true}))}});
+document.addEventListener("change",e=>{if(e.target.matches("[data-period-select]")){S.period=e.target.value;S.month=null;S.limit=24;render()}});
+render();
+</script>
+
+<script>
+const CHOSEN = { option: "A", date: "2026-11-13" };
+const OPTIONS = [
+  { key: "A", name: "Stacked with period chips", note: "Channel card, then a row of period chips (Last 12 months, each year, All time), then tiles, chart beside top 5, then the period's videos with search and sort. On phones the chips scroll sideways. Every control is visible without opening anything." },
+  { key: "B", name: "Sticky toolbar", note: "Stats on top follow the period. Period, search and sort share one bar that sticks to the top while you scroll the videos, so you can change the period from deep in the list. The period is a select, which stays compact on phones with many years." },
+  { key: "C", name: "Chart as navigator", note: "A period select sits above the tiles. In All time the chart shows uploads per year and clicking a column opens that year. In a year or the last 12 months, clicking a month filters the video list, shown as a removable filter chip. Columns are focusable and work with Enter." },
+];
+
+const $ = (id) => document.getElementById(id);
+let cur = "A", size = { w: 390, h: 844 };
+try { const s = JSON.parse(localStorage.getItem("ui-opt-size") || "null"); if (s) size = s; } catch (e) {}
+const [hOpt, hSize] = location.hash.slice(1).split("/");
+if (OPTIONS.some((o) => o.key === hOpt)) cur = hOpt;
+if (hSize === "desktop") size = { w: 1280, h: 800 }; else if (hSize === "phone") size = { w: 390, h: 844 };
+$("status").textContent = CHOSEN ? "Chosen: " + CHOSEN.option + " · " + CHOSEN.date : "Not chosen yet";
+if (CHOSEN) $("status").classList.add("done");
+OPTIONS.forEach((o) => {
+  const b = document.createElement("button");
+  b.dataset.k = o.key;
+  b.innerHTML = o.key + " · " + o.name + (CHOSEN && CHOSEN.option === o.key ? '<span class="badge">Chosen</span>' : "");
+  b.onclick = () => { cur = o.key; render(); };
+  $("tabs").appendChild(b);
+});
+document.querySelectorAll("#sizes button").forEach((b) => b.onclick = () => {
+  size = { w: +b.dataset.w, h: +b.dataset.h };
+  try { localStorage.setItem("ui-opt-size", JSON.stringify(size)); } catch (e) {}
+  render();
+});
+function fit() {
+  const s = Math.min(1, $("stage").clientWidth / size.w), f = $("view");
+  f.style.width = size.w + "px"; f.style.height = size.h + "px"; f.style.transform = "scale(" + s + ")";
+  $("frame").style.width = size.w * s + "px"; $("frame").style.height = size.h * s + "px";
+  $("dims").textContent = size.w + " x " + size.h + (s < 1 ? " (shown at " + Math.round(s * 100) + "%)" : "");
+}
+function render() {
+  const o = OPTIONS.find((x) => x.key === cur);
+  document.querySelectorAll("#tabs button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.k === cur));
+  document.querySelectorAll("#sizes button").forEach((b) => b.setAttribute("aria-pressed", +b.dataset.w === size.w));
+  $("note").innerHTML = "<p><b>" + o.key + " · " + o.name + ".</b> " + o.note + "</p>";
+  $("view").srcdoc = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>' +
+    $("app-css").textContent + '</style></head><body><main class="page" id="app"></main><script>const OPT="' + cur + '";' +
+    $("app-js").textContent + "<\/script></body></html>";
+  fit();
+}
+addEventListener("resize", fit);
+render();
+</script></body></html>

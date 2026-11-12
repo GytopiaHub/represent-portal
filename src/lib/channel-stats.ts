@@ -48,11 +48,6 @@ const dayKey = (d: Date) =>
 
 export const yearOf = (iso: string | Date) => Number(dayKey(new Date(iso)).slice(0, 4));
 
-export function uploadsInYear(videos: VideoLike[], now: Date) {
-  const year = yearOf(now);
-  return videos.filter((v) => yearOf(v.publishedAt) === year).length;
-}
-
 // Newest first. The current year is always offered, even before its first upload.
 export function yearsWithUploads(videos: VideoLike[], now: Date) {
   const years = new Set(videos.map((v) => yearOf(v.publishedAt)));
@@ -73,19 +68,82 @@ export function uploadsPerMonthOfYear(videos: VideoLike[], year: number) {
   }));
 }
 
+// Last 12 months is calendar months, current one included, to match the
+// chart. Years are calendar years in Asia/Singapore.
+export type Period = "12m" | "all" | number;
+
+// Newest year first, between the rolling window and All time.
+export function periodsFor(videos: VideoLike[], now: Date): Period[] {
+  return ["12m", ...yearsWithUploads(videos, now), "all"];
+}
+
+export function periodLabel(period: Period) {
+  return period === "12m" ? "Last 12 months" : period === "all" ? "All time" : String(period);
+}
+
+const shiftMonth = (key: string, by: number) => {
+  const [y, m] = key.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + by, 15));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+};
+
+export function inPeriod(iso: string, period: Period, now: Date) {
+  if (period === "all") return true;
+  if (period === "12m") {
+    const k = monthKey(new Date(iso));
+    return k >= shiftMonth(monthKey(now), -11) && k <= monthKey(now);
+  }
+  return yearOf(iso) === period;
+}
+
+// One column per year from the first upload to now, empty years included.
+export function uploadsPerYear(videos: VideoLike[], now: Date) {
+  const last = yearOf(now);
+  const first = videos.reduce((min, v) => Math.min(min, yearOf(v.publishedAt)), last);
+  return Array.from({ length: last - first + 1 }, (_, i) => {
+    const year = first + i;
+    return {
+      key: String(year),
+      label: String(year),
+      count: videos.filter((v) => yearOf(v.publishedAt) === year).length,
+    };
+  });
+}
+
+export function uploadBuckets(videos: VideoLike[], period: Period, now: Date) {
+  if (period === "12m") return uploadsPerMonth(videos, now);
+  if (period === "all") return uploadsPerYear(videos, now);
+  return uploadsPerMonthOfYear(videos, period);
+}
+
 type VideoStats = VideoLike & { likes: number; comments: number };
 
-export function summariseYear<T extends VideoStats>(videos: T[], year: number) {
-  const inYear = videos.filter((v) => yearOf(v.publishedAt) === year);
-  const sum = (f: (v: T) => number) => inYear.reduce((s, v) => s + f(v), 0);
+export function summarise<T extends VideoStats>(videos: T[]) {
+  const sum = (f: (v: T) => number) => videos.reduce((s, v) => s + f(v), 0);
   return {
-    videos: inYear,
-    uploads: inYear.length,
+    uploads: videos.length,
     views: sum((v) => v.views),
     likes: sum((v) => v.likes),
     comments: sum((v) => v.comments),
-    medianViews: median(inYear.map((v) => v.views)),
+    medianViews: median(videos.map((v) => v.views)),
   };
+}
+
+// The comparison shown on the uploads tile. Null when there is nothing fair
+// to compare with: All time, or a year with no year before it.
+export function previousPeriod(videos: VideoLike[], period: Period, now: Date) {
+  if (period === "all") return null;
+  if (period === "12m") {
+    const end = shiftMonth(monthKey(now), -12);
+    const start = shiftMonth(end, -11);
+    const count = videos.filter((v) => {
+      const k = monthKey(new Date(v.publishedAt));
+      return k >= start && k <= end;
+    }).length;
+    return { kind: "12m" as const, count };
+  }
+  if (!videos.some((v) => yearOf(v.publishedAt) === period - 1)) return null;
+  return { kind: "year" as const, year: period - 1, ...previousYearSamePeriod(videos, period, now) };
 }
 
 // Uploads in the year before `year`, up to the same day of the year as `now`
