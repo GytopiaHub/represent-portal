@@ -7,7 +7,7 @@ Stack: Next.js 16 (App Router, Cache Components) · Neon Postgres · Drizzle · 
 ## Quick start
 
 ```bash
-cp .env.example .env      # fill in DATABASE_URL (Neon)
+cp .env.example .env      # fill in DATABASE_URL and the YouTube vars
 npm install
 npm run db:reset          # drops every table and enum, then pushes the schema (destructive)
 npm run dev
@@ -15,7 +15,7 @@ npm run dev
 
 ## Environment
 
-Only `DATABASE_URL` is needed. See [.env.example](.env.example). In production, set it in Vercel.
+`DATABASE_URL` (Neon), `YOUTUBE_API_KEY` and `YOUTUBE_CHANNEL_HANDLE` (the home page channel dashboard). See [.env.example](.env.example) and SRS section 2.2. In production, set them in Vercel.
 
 ## Project structure
 
@@ -24,7 +24,7 @@ src/
   app/                 routing only; keep pages thin
   features/<domain>/   UI for one domain (added as features are rebuilt)
   components/          shared UI: ui/ (shadcn, via `npx shadcn add`), layout/, common/
-  server/              the only code that touches the database (SEC-1)
+  server/              the only code that touches the database or secret-keyed APIs (SEC-1)
   db/                  Drizzle client and schema/ (one file per domain)
   lib/                 framework-free helpers usable anywhere
 scripts/               db:reset
