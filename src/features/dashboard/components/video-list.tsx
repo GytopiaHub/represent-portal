@@ -14,9 +14,13 @@ const SORTS = {
 } as const;
 type SortKey = keyof typeof SORTS;
 
+// The list sits under the stats on the home page, so it starts short.
+const PAGE = 24;
+
 export function VideoList({ videos }: { videos: Video[] }) {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortKey>("newest");
+  const [limit, setLimit] = useState(PAGE);
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -32,7 +36,10 @@ export function VideoList({ videos }: { videos: Video[] }) {
           placeholder="Search videos"
           aria-label="Search videos"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setLimit(PAGE);
+          }}
           className="h-10 min-w-40 flex-1"
         />
         <select
@@ -55,7 +62,7 @@ export function VideoList({ videos }: { videos: Video[] }) {
         <p className="py-8 text-center text-sm text-muted-foreground">No videos match &quot;{query}&quot;.</p>
       ) : (
         <ul className="grid gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {shown.map((v) => (
+          {shown.slice(0, limit).map((v) => (
             <li key={v.id}>
               <a
                 href={`https://www.youtube.com/watch?v=${v.id}`}
@@ -85,6 +92,15 @@ export function VideoList({ videos }: { videos: Video[] }) {
             </li>
           ))}
         </ul>
+      )}
+      {shown.length > limit && (
+        <button
+          type="button"
+          onClick={() => setLimit((n) => n + PAGE)}
+          className="h-11 self-center rounded-4xl border border-input bg-input/30 px-5 text-sm font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+        >
+          Show more ({shown.length - limit} left)
+        </button>
       )}
     </div>
   );
