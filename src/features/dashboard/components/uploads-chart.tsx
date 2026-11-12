@@ -16,7 +16,15 @@ function niceTicks(max: number) {
 // Server-rendered SVG: one series, so no legend. --chart-1 sits below 3:1
 // on the card, so the peak is labelled, each column has a tooltip, and the
 // table view carries every value.
-export function UploadsChart({ months }: { months: Month[] }) {
+export function UploadsChart({
+  months,
+  title = "Uploads per month",
+  description,
+}: {
+  months: Month[];
+  title?: string;
+  description?: string;
+}) {
   const max = Math.max(1, ...months.map((m) => m.count));
   const ticks = niceTicks(max);
   const top = ticks[ticks.length - 1];
@@ -29,17 +37,15 @@ export function UploadsChart({ months }: { months: Month[] }) {
   return (
     <Card size="sm">
       <CardHeader>
-        <CardTitle>Uploads per month</CardTitle>
-        <CardDescription>
-          {total} in the last {months.length} months
-        </CardDescription>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description ?? `${total} in the last ${months.length} months`}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <svg
           viewBox={`0 0 ${W} ${H}`}
           className="w-full"
           role="img"
-          aria-label={`Uploads per month: ${months.map((m) => `${m.label} ${m.count}`).join(", ")}`}
+          aria-label={`${title}: ${months.map((m) => `${m.label} ${m.count}`).join(", ")}`}
         >
           {ticks.map((t) => (
             <g key={t}>
