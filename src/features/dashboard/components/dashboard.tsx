@@ -13,6 +13,7 @@ import { RecentUploads } from "./recent-uploads";
 import { StatTile } from "./stat-tile";
 import { UploadsChart } from "./uploads-chart";
 import { VideoList } from "./video-list";
+import { YearView } from "./year-view";
 
 export async function Dashboard() {
   const data = await getChannelData();
@@ -40,6 +41,7 @@ export async function Dashboard() {
         <TabsList>
           <TabsTrigger value="overview" className="px-4">Overview</TabsTrigger>
           <TabsTrigger value="videos" className="px-4">Videos</TabsTrigger>
+          <TabsTrigger value="year" className="px-4">Year</TabsTrigger>
         </TabsList>
         <TabsContent value="overview" className="mt-2 flex flex-col gap-4">
           <Card className="gap-2 px-6">
@@ -66,6 +68,10 @@ export async function Dashboard() {
         </TabsContent>
         <TabsContent value="videos" className="mt-2">
           <VideoList videos={videos} />
+        </TabsContent>
+        {/* Kept mounted so the default year is server-rendered and switching is instant. */}
+        <TabsContent value="year" keepMounted className="mt-2">
+          <YearView videos={videos} fetchedAt={fetchedAt} />
         </TabsContent>
       </Tabs>
     </div>

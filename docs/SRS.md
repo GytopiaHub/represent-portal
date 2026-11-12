@@ -1,8 +1,9 @@
 # RepresENT Portal — Software Requirements Specification
 
-**Version:** 2.1 · **Date:** 2026-11-13 · **Audience:** Claude (implementation agent) and RepresENT admins
+**Version:** 2.2 · **Date:** 2026-11-13 · **Audience:** Claude (implementation agent) and RepresENT admins
 
 > **Changelog**
+> - **v2.2:** Added the Year tab to the channel dashboard (section 6.1).
 > - **v2.1:** Added the channel dashboard (section 6.1) as the home page, fed by the YouTube Data API. Added `YOUTUBE_API_KEY` and `YOUTUBE_CHANNEL_HANDLE`. UI option C chosen in `docs/ui/home.html`.
 > - **v2.0:** Reset the code to its foundation so features can be rebuilt and re-specified one at a time. This document now covers only the architecture. Feature requirements (roles, functional requirements, data model, jobs, routes, build plan, acceptance criteria) were removed, and each one is added back as its feature is rebuilt. Google OAuth (Auth.js) is deferred and will be added later. The only environment variable is the Neon connection string. The full v1.4 spec is in git history at `ed5875a`.
 > - **v1.4:** Added `docs/ui/`, which holds one HTML page of UI options per app page.
@@ -103,10 +104,11 @@ app/page.tsx       Channel dashboard (6.1)
 
 A page members open to check how the RepresENT YouTube channel is doing. Public while sign-in is deferred; every figure on it is already public on YouTube.
 
-**Layout:** option C in `docs/ui/home.html`. Two tabs:
+**Layout:** option C in `docs/ui/home.html`, plus a Year tab added in v2.2. Three tabs:
 
 - **Overview:** subscriber count as the headline figure, with total views and video count under it. Tiles for days since the last upload, uploads this calendar year and median views per video. An uploads-per-month column chart for the last 12 months (with a table view). The 5 most recent uploads with views, likes and comments.
 - **Videos:** every public upload as a card (thumbnail, title, date, length, views, likes) with search by title and sort by newest, oldest, most viewed or most liked. Search and sort run in the browser. Each video links to YouTube.
+- **Year:** a year picker (every year with uploads, plus the current year; defaults to the current year). For the chosen year: uploads, views, likes (with comments), median views, uploads per month from January to December, the top 5 by views and that year's videos with search and sort. Figures cover **videos published in that year, with their lifetime counts**, not views earned during the year (the Data API has no per-year totals). The uploads tile compares with the previous year: up to the same day of the year when viewing the current year, or the whole previous year for a past year. It is hidden when there is no previous year. Computed in the browser from the data the page already has, so it adds no API calls. The panel stays mounted so the default year is server-rendered.
 
 The page shows when the data was fetched, in the viewer's local time.
 
