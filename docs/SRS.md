@@ -1,8 +1,9 @@
 # RepresENT Portal — Software Requirements Specification
 
-**Version:** 2.4 · **Date:** 2026-11-16 · **Audience:** Claude (implementation agent) and RepresENT admins
+**Version:** 2.5 · **Date:** 2026-11-16 · **Audience:** Claude (implementation agent) and RepresENT admins
 
 > **Changelog**
+> - **v2.5:** Added groups and their members as reference data for the member allocation list (section 6.2), with a `db:seed` script. SEC-4 now allows public artist reference data.
 > - **v2.4:** The channel dashboard counts official covers only. Side cams, relay dances, vlogs and other extras are dropped by a title rule (section 6.1).
 > - **v2.3:** Replaced the dashboard's Overview, Videos and Year tabs with a single view driven by a period control (section 6.1). UI option A chosen in `docs/ui/home-v2.html`.
 > - **v2.2:** Added the Year tab to the channel dashboard (section 6.1).
@@ -67,6 +68,7 @@ A crew portal where members run song covers (crews, recruiting, scheduling), bro
   - **Never commit secrets.** `.env*` is in `.gitignore` except `.env.example`, which holds variable names only.
   - Enable **GitHub secret scanning + push protection** and **Dependabot** alerts on the repo.
   - Seed data and fixtures use **fictional** people only. No real names, emails or personal data in the repo, issues or commit messages.
+  - **Exception:** public artist reference data (K-pop group names and idol stage names, as already public on YouTube) may be committed. Crew members' names, social handles and other personal data never may, including the dancer and crew credits in video descriptions.
   - Security must never depend on the code being hidden.
   - GitHub Actions workflows that use secrets run only on `schedule`/`workflow_dispatch` and `push` to `main`, never on `pull_request` from forks.
   - Keep a `SECURITY.md` with a contact for reporting vulnerabilities.
@@ -148,3 +150,18 @@ About 7 units per refresh at 133 videos, against the free 10,000 units a day.
 **Failure handling (NFR-4):** if the env vars are missing, the handle matches no channel, or the API fails, the page renders a short message in place of the data instead of an error page. API errors are logged with status and reason only.
 
 **Not yet covered:** subscriber and view history. The Data API only returns current totals, so growth charts need a daily snapshot saved to Neon (for example by a Vercel cron job), or the YouTube Analytics API with the channel owner's OAuth consent.
+
+### 6.2 Groups (reference data)
+
+The K-pop groups the crew covers, with their members. When a cover starts (a later feature), picking a group pre-fills the member allocation list with one slot per member, in line order. No UI reads these tables yet.
+
+**Tables** (`src/db/schema/groups.ts`):
+
+- `groups`: `id`, `slug` (unique), `name`.
+- `group_members`: `id`, `group_id` (cascade on delete), `name` (stage name), `position` (line order, from 1). Unique on (`group_id`, `name`) and (`group_id`, `position`).
+
+A **slug** is a short, fixed ID made from the name, using lowercase letters, numbers and hyphens only, so it's safe in a URL: `LE SSERAFIM` is `le-sserafim`, `&TEAM` is `and-team`. The seed finds rows by slug, so a group's display name can be corrected without creating a duplicate.
+
+**Scope:** groups only. Soloists are left out (a one-person list needs no pre-fill), and so are units and survival-show teams, until the crew covers one again. The starting list is the groups with 2 or more songs covered (counted from official covers, section 6.1, with re-versions counted once), plus groups the crew expects to cover again.
+
+**Seed:** `src/db/seed/groups.ts` holds the starting list, and `npm run db:seed` loads it. In one transaction it upserts each group by slug and replaces that group's members. Groups not in the file are left alone, so the script is safe to re-run. To add a group, add an entry with its members in line order and run `npm run db:seed`. Once members can edit groups in the app, the seed must become insert-only so it doesn't overwrite their edits.
