@@ -16,9 +16,9 @@ function niceTicks(max: number) {
 // Server-rendered SVG: one series, so no legend. --chart-1 sits below 3:1
 // on the card, so the peak is labelled, each column has a tooltip, and the
 // table view carries every value.
-export function UploadsChart({
+export function CoversChart({
   months,
-  title = "Uploads per month",
+  title = "Covers per month",
   description,
   bucketLabel = "Month",
 }: {
@@ -63,7 +63,7 @@ export function UploadsChart({
             const r = Math.min(4, (H - PAD_BOTTOM - barTop) / 2);
             return (
               <g key={m.key}>
-                <title>{`${m.label}: ${m.count} upload${m.count === 1 ? "" : "s"}`}</title>
+                <title>{`${m.label}: ${m.count} cover${m.count === 1 ? "" : "s"}`}</title>
                 {/* Hit target is the whole column slot, wider than the bar. */}
                 <rect x={PAD_LEFT + i * step} y={PAD_TOP} width={step} height={H - PAD_TOP} fill="transparent" />
                 {m.count > 0 && (
@@ -90,7 +90,7 @@ export function UploadsChart({
             <thead>
               <tr className="text-xs text-muted-foreground">
                 <th className="py-1 text-left font-medium">{bucketLabel}</th>
-                <th className="py-1 text-right font-medium">Uploads</th>
+                <th className="py-1 text-right font-medium">Covers</th>
               </tr>
             </thead>
             <tbody>

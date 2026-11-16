@@ -1,8 +1,9 @@
 # RepresENT Portal — Software Requirements Specification
 
-**Version:** 2.3 · **Date:** 2026-11-13 · **Audience:** Claude (implementation agent) and RepresENT admins
+**Version:** 2.4 · **Date:** 2026-11-16 · **Audience:** Claude (implementation agent) and RepresENT admins
 
 > **Changelog**
+> - **v2.4:** The channel dashboard counts official covers only. Side cams, relay dances, vlogs and other extras are dropped by a title rule (section 6.1).
 > - **v2.3:** Replaced the dashboard's Overview, Videos and Year tabs with a single view driven by a period control (section 6.1). UI option A chosen in `docs/ui/home-v2.html`.
 > - **v2.2:** Added the Year tab to the channel dashboard (section 6.1).
 > - **v2.1:** Added the channel dashboard (section 6.1) as the home page, fed by the YouTube Data API. Added `YOUTUBE_API_KEY` and `YOUTUBE_CHANNEL_HANDLE`. UI option C chosen in `docs/ui/home.html`.
@@ -107,28 +108,36 @@ A page members open to check how the RepresENT YouTube channel is doing. Public 
 
 **Layout:** option A in `docs/ui/home-v2.html`. One page, no tabs (v2.3 replaced the Overview, Videos and Year tabs of option C in `docs/ui/home.html`).
 
-- **Channel card:** subscriber count as the headline figure, with total channel views, video count and days since the last upload. These are lifetime figures and don't change with the period.
-- **Period control:** a row of chips: Last 12 months (the default), every year with uploads plus the current year (newest first), and All time. On phones the row scrolls sideways. The period is held in the browser, not the URL, so the default period is server-rendered and switching is instant.
-- **Tiles:** uploads, views on these uploads, likes (with comments) and median views per video, for the chosen period.
-- **Chart:** uploads per month for Last 12 months (the current month and the 11 before it) or a year (January to December), and uploads per year for All time (every year from the first upload, empty years included). Has a table view.
+- **Channel card:** subscriber count as the headline figure, with total channel views, the number of covers and days since the last cover. These are lifetime figures and don't change with the period. Subscribers and channel views are channel-wide, because YouTube only reports them for the whole channel.
+- **Period control:** a row of chips: Last 12 months (the default), every year with covers plus the current year (newest first), and All time. On phones the row scrolls sideways. The period is held in the browser, not the URL, so the default period is server-rendered and switching is instant.
+- **Tiles:** covers, views on these covers, likes (with comments) and median views per cover, for the chosen period.
+- **Chart:** covers per month for Last 12 months (the current month and the 11 before it) or a year (January to December), and covers per year for All time (every year from the first cover, empty years included). Has a table view.
 - **Top 5** by views in the period.
-- **Videos:** the period's uploads as cards (thumbnail, title, date, length, views, likes), with search by title and sort by newest, oldest, most viewed or most liked. Shows 24, with a Show more button that adds 24 at a time. Each video links to YouTube.
+- **Covers:** the period's covers as cards (thumbnail, title, date, length, views, likes), with search by title and sort by newest, oldest, most viewed or most liked. Shows 24, with a Show more button that adds 24 at a time. Each video links to YouTube.
 
-Figures cover **videos published in the period, with their lifetime counts**, not views earned during the period (the Data API has no per-period totals). The uploads tile compares with:
+Figures cover **official covers published in the period, with their lifetime counts**, not views earned during the period (the Data API has no per-period totals). The covers tile compares with:
 
 - **Last 12 months:** the 12 calendar months before it.
-- **A year:** the previous year, up to the same day of the year when viewing the current year, or the whole previous year for a past year. Hidden when the previous year has no uploads.
-- **All time:** no comparison. The hint shows the first upload date.
+- **A year:** the previous year, up to the same day of the year when viewing the current year, or the whole previous year for a past year. Hidden when the previous year has no covers.
+- **All time:** no comparison. The hint shows the first cover date.
 
 Everything is computed in the browser from the data the page already has, so the period control adds no API calls.
 
 The page shows when the data was fetched, in the viewer's local time.
 
+**Official covers:** the channel also posts side cams, relay dances, fun runs, vlogs, busking clips and Shorts. The Data API can't filter uploads by type, so every upload is fetched and `isOfficialCover` in `src/lib/covers.ts` keeps a video when its title:
+
+- contains `RepresENT`, or `COVER` in capitals (so Shorts hashtags like `#andteamdancecover` don't count), and
+- contains none of the extra tags: `SIDE CAM`, `RELAY DANCE`, `REP-ENT+` (any spelling), `RE-TREAT`, `RepresENTERTAINMENT`, `BUSKING`, `FUN RUN`, `VLOG`.
+
+A second official version of a song (for example a 14-dancer re-film) counts as its own cover in the period it came out. When the crew starts a new kind of extra, add its tag to the list. On 2026-11-16 this kept 91 of 134 uploads.
+
 **Data source** (`src/server/youtube/queries.ts`, YouTube Data API v3):
 
-1. `channels.list?forHandle=` resolves the handle to the uploads playlist and returns subscribers, views and video count (1 unit).
+1. `channels.list?forHandle=` resolves the handle to the uploads playlist and returns subscribers and views (1 unit).
 2. `playlistItems.list` pages through the uploads playlist, 50 per page (1 unit per page).
 3. `videos.list` fetches snippet, duration and statistics in batches of 50 (1 unit per batch). Private and deleted uploads drop out here.
+4. Only official covers are kept (see below), before the result is cached.
 
 About 7 units per refresh at 133 videos, against the free 10,000 units a day.
 

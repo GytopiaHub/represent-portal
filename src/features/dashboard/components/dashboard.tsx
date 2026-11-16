@@ -15,16 +15,16 @@ export async function Dashboard() {
     );
   }
 
-  const { channel, videos, fetchedAt } = data;
+  const { channel, covers, fetchedAt } = data;
   // Measured from the fetch time so the figures match the cached data.
-  const latest = videos[0];
+  const latest = covers[0];
   const sinceLast = latest ? daysSince(latest.publishedAt, new Date(fetchedAt)) : null;
-  const lastUpload =
+  const lastCover =
     sinceLast === null
-      ? "No uploads yet"
+      ? "No covers yet"
       : sinceLast === 0
-        ? "Last upload today"
-        : `Last upload ${sinceLast} day${sinceLast === 1 ? "" : "s"} ago`;
+        ? "Last cover today"
+        : `Last cover ${sinceLast} day${sinceLast === 1 ? "" : "s"} ago`;
 
   return (
     <div className="flex flex-col gap-4">
@@ -40,11 +40,13 @@ export async function Dashboard() {
         </div>
         <p className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
           <span>{formatCompact(channel.views)} channel views</span>
-          <span>{channel.videoCount.toLocaleString("en")} videos</span>
-          <span>{lastUpload}</span>
+          <span>
+            {covers.length.toLocaleString("en")} cover{covers.length === 1 ? "" : "s"}
+          </span>
+          <span>{lastCover}</span>
         </p>
       </Card>
-      <ChannelExplorer videos={videos} fetchedAt={fetchedAt} />
+      <ChannelExplorer covers={covers} fetchedAt={fetchedAt} />
     </div>
   );
 }

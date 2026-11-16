@@ -33,8 +33,8 @@ export function VideoList({ videos }: { videos: Video[] }) {
       <div className="flex flex-wrap gap-2">
         <Input
           type="search"
-          placeholder="Search videos"
-          aria-label="Search videos"
+          placeholder="Search covers"
+          aria-label="Search covers"
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -43,7 +43,7 @@ export function VideoList({ videos }: { videos: Video[] }) {
           className="h-10 min-w-40 flex-1"
         />
         <select
-          aria-label="Sort videos"
+          aria-label="Sort covers"
           value={sort}
           onChange={(e) => setSort(e.target.value as SortKey)}
           className="h-10 rounded-4xl border border-input bg-input/30 px-3 text-sm"
@@ -56,10 +56,10 @@ export function VideoList({ videos }: { videos: Video[] }) {
         </select>
       </div>
       <p className="text-xs text-muted-foreground" aria-live="polite">
-        {shown.length === videos.length ? `${videos.length} videos` : `${shown.length} of ${videos.length} videos`}
+        {shown.length === videos.length ? `${videos.length} covers` : `${shown.length} of ${videos.length} covers`}
       </p>
       {shown.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">No videos match &quot;{query}&quot;.</p>
+        <p className="py-8 text-center text-sm text-muted-foreground">No covers match &quot;{query}&quot;.</p>
       ) : (
         <ul className="grid gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {shown.slice(0, limit).map((v) => (
