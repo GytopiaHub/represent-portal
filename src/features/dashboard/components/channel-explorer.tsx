@@ -13,32 +13,32 @@ import {
   previousPeriod,
   summarise,
   topBy,
-  uploadBuckets,
+  coverBuckets,
 } from "@/lib/channel-stats";
 import { cn } from "@/lib/utils";
 import { StatTile } from "./stat-tile";
-import { UploadsChart } from "./uploads-chart";
+import { CoversChart } from "./covers-chart";
 import { VideoList } from "./video-list";
 
 // "in the last 12 months", "in 2025", or the fallback for All time.
 const within = (p: Period, all: string) => (p === "12m" ? "in the last 12 months" : p === "all" ? all : `in ${p}`);
 
-// Figures cover videos published in the chosen period, with their lifetime
+// Figures cover official covers published in the chosen period, with their lifetime
 // counts. The Data API has no per-period view or subscriber totals.
-export function ChannelExplorer({ videos, fetchedAt }: { videos: Video[]; fetchedAt: string }) {
+export function ChannelExplorer({ covers, fetchedAt }: { covers: Video[]; fetchedAt: string }) {
   const now = useMemo(() => new Date(fetchedAt), [fetchedAt]);
-  const periods = useMemo(() => periodsFor(videos, now), [videos, now]);
+  const periods = useMemo(() => periodsFor(covers, now), [covers, now]);
   const [period, setPeriod] = useState<Period>("12m");
 
-  const list = useMemo(() => videos.filter((v) => inPeriod(v.publishedAt, period, now)), [videos, period, now]);
+  const list = useMemo(() => covers.filter((v) => inPeriod(v.publishedAt, period, now)), [covers, period, now]);
   const summary = useMemo(() => summarise(list), [list]);
-  const buckets = useMemo(() => uploadBuckets(videos, period, now), [videos, period, now]);
+  const buckets = useMemo(() => coverBuckets(covers, period, now), [covers, period, now]);
   const top = useMemo(() => topBy(list, 5, (v) => v.views), [list]);
-  const prev = previousPeriod(videos, period, now);
+  const prev = previousPeriod(covers, period, now);
   const shortDate = now.toLocaleDateString("en-SG", { day: "numeric", month: "short", timeZone: "Asia/Singapore" });
-  const first = videos.at(-1);
+  const first = covers.at(-1);
 
-  const uploadsHint =
+  const coversHint =
     period === "all"
       ? first && `since ${formatDate(first.publishedAt)}`
       : prev?.kind === "12m"
@@ -74,23 +74,23 @@ export function ChannelExplorer({ videos, fetchedAt }: { videos: Video[]; fetche
           ))}
         </div>
         <p className="text-xs text-muted-foreground">
-          Videos published {within(period, "since the channel started")}, with their views to date.
+          Covers published {within(period, "since the channel started")}, with their views to date.
         </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <StatTile label="Uploads" value={summary.uploads.toLocaleString("en")} hint={uploadsHint || undefined} />
-        <StatTile label="Views on these uploads" value={formatCompact(summary.views)} />
+        <StatTile label="Covers" value={summary.covers.toLocaleString("en")} hint={coversHint || undefined} />
+        <StatTile label="Views on these covers" value={formatCompact(summary.views)} />
         <StatTile label="Likes" value={formatCompact(summary.likes)} hint={`${formatCompact(summary.comments)} comments`} />
-        <StatTile label="Median views" value={formatCompact(summary.medianViews)} hint="per video" />
+        <StatTile label="Median views" value={formatCompact(summary.medianViews)} hint="per cover" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        <UploadsChart
+        <CoversChart
           months={buckets}
-          title={isAll ? "Uploads per year" : "Uploads per month"}
+          title={isAll ? "Covers per year" : "Covers per month"}
           bucketLabel={isAll ? "Year" : "Month"}
-          description={`${summary.uploads} upload${summary.uploads === 1 ? "" : "s"} ${within(period, "in total")}`}
+          description={`${summary.covers} cover${summary.covers === 1 ? "" : "s"} ${within(period, "in total")}`}
         />
         <Card size="sm">
           <CardHeader>
@@ -98,7 +98,7 @@ export function ChannelExplorer({ videos, fetchedAt }: { videos: Video[]; fetche
           </CardHeader>
           <CardContent>
             {top.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No uploads in this period yet.</p>
+              <p className="text-sm text-muted-foreground">No covers in this period yet.</p>
             ) : (
               <ol className="flex flex-col">
                 {top.map((v, i) => (
@@ -122,7 +122,7 @@ export function ChannelExplorer({ videos, fetchedAt }: { videos: Video[]; fetche
       </div>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-base font-medium">{isAll ? "All videos" : `Videos ${within(period, "")}`}</h2>
+        <h2 className="text-base font-medium">{isAll ? "All covers" : `Covers ${within(period, "")}`}</h2>
         <VideoList key={String(period)} videos={list} />
       </section>
     </div>

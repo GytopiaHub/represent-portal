@@ -1,8 +1,10 @@
 import "server-only";
 import { cacheLife } from "next/cache";
+import { isOfficialCover } from "@/lib/covers";
 
 // YouTube Data API v3. Quota per refresh: 1 (handle lookup) + 1 per 50
-// uploads (playlistItems) + 1 per 50 videos (videos.list).
+// uploads (playlistItems) + 1 per 50 videos (videos.list). Every upload is
+// fetched, because the API can't filter by type, and only covers are kept.
 const API = "https://www.googleapis.com/youtube/v3";
 
 export type Video = {
@@ -21,11 +23,10 @@ export type Channel = {
   handle: string;
   subscribers: number;
   views: number;
-  videoCount: number;
 };
 
 export type VideosResult =
-  | { ok: true; channel: Channel; videos: Video[]; fetchedAt: string }
+  | { ok: true; channel: Channel; covers: Video[]; fetchedAt: string }
   | { ok: false; message: string };
 
 type Thumbs = Record<string, { url: string } | undefined>;
@@ -55,7 +56,7 @@ async function resolveChannel(handle: string, key: string) {
     items?: {
       snippet: { title: string; customUrl?: string };
       contentDetails: { relatedPlaylists: { uploads: string } };
-      statistics: { subscriberCount?: string; viewCount?: string; videoCount?: string };
+      statistics: { subscriberCount?: string; viewCount?: string };
     }[];
   }>("channels", { part: "snippet,contentDetails,statistics", forHandle }, key);
   const c = data.items?.[0];
@@ -66,7 +67,6 @@ async function resolveChannel(handle: string, key: string) {
     // Hidden or rounded by YouTube for some channels; 0 means not available.
     subscribers: Number(c.statistics.subscriberCount ?? 0),
     views: Number(c.statistics.viewCount ?? 0),
-    videoCount: Number(c.statistics.videoCount ?? 0),
   };
   return { channel, uploads: c.contentDetails.relatedPlaylists.uploads };
 }
@@ -139,8 +139,10 @@ async function loadChannel(handle: string): Promise<VideosResult> {
   try {
     const { channel, uploads } = await resolveChannel(handle, key);
     const videos = await getDetails(await listUploadIds(uploads, key), key);
+    // Filtered before caching so extras never reach the page.
+    const covers = videos.filter((v) => isOfficialCover(v.title));
     cacheLife("hours");
-    return { ok: true, channel, videos, fetchedAt: new Date().toISOString() };
+    return { ok: true, channel, covers, fetchedAt: new Date().toISOString() };
   } catch (err) {
     // A short lifetime so an outage clears within minutes, not an hour.
     cacheLife("minutes");

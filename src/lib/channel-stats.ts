@@ -25,7 +25,7 @@ const TZ = "Asia/Singapore";
 const monthKey = (d: Date) =>
   new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit" }).format(d);
 
-export function uploadsPerMonth(videos: VideoLike[], now: Date, months = 12) {
+export function coversPerMonth(videos: VideoLike[], now: Date, months = 12) {
   const counts = new Map<string, number>();
   for (const v of videos) {
     const k = monthKey(new Date(v.publishedAt));
@@ -48,14 +48,14 @@ const dayKey = (d: Date) =>
 
 export const yearOf = (iso: string | Date) => Number(dayKey(new Date(iso)).slice(0, 4));
 
-// Newest first. The current year is always offered, even before its first upload.
-export function yearsWithUploads(videos: VideoLike[], now: Date) {
+// Newest first. The current year is always offered, even before its first cover.
+export function yearsWithCovers(videos: VideoLike[], now: Date) {
   const years = new Set(videos.map((v) => yearOf(v.publishedAt)));
   years.add(yearOf(now));
   return [...years].sort((a, b) => b - a);
 }
 
-export function uploadsPerMonthOfYear(videos: VideoLike[], year: number) {
+export function coversPerMonthOfYear(videos: VideoLike[], year: number) {
   const counts = new Array<number>(12).fill(0);
   for (const v of videos) {
     const [y, m] = monthKey(new Date(v.publishedAt)).split("-").map(Number);
@@ -74,7 +74,7 @@ export type Period = "12m" | "all" | number;
 
 // Newest year first, between the rolling window and All time.
 export function periodsFor(videos: VideoLike[], now: Date): Period[] {
-  return ["12m", ...yearsWithUploads(videos, now), "all"];
+  return ["12m", ...yearsWithCovers(videos, now), "all"];
 }
 
 export function periodLabel(period: Period) {
@@ -96,8 +96,8 @@ export function inPeriod(iso: string, period: Period, now: Date) {
   return yearOf(iso) === period;
 }
 
-// One column per year from the first upload to now, empty years included.
-export function uploadsPerYear(videos: VideoLike[], now: Date) {
+// One column per year from the first cover to now, empty years included.
+export function coversPerYear(videos: VideoLike[], now: Date) {
   const last = yearOf(now);
   const first = videos.reduce((min, v) => Math.min(min, yearOf(v.publishedAt)), last);
   return Array.from({ length: last - first + 1 }, (_, i) => {
@@ -110,10 +110,10 @@ export function uploadsPerYear(videos: VideoLike[], now: Date) {
   });
 }
 
-export function uploadBuckets(videos: VideoLike[], period: Period, now: Date) {
-  if (period === "12m") return uploadsPerMonth(videos, now);
-  if (period === "all") return uploadsPerYear(videos, now);
-  return uploadsPerMonthOfYear(videos, period);
+export function coverBuckets(videos: VideoLike[], period: Period, now: Date) {
+  if (period === "12m") return coversPerMonth(videos, now);
+  if (period === "all") return coversPerYear(videos, now);
+  return coversPerMonthOfYear(videos, period);
 }
 
 type VideoStats = VideoLike & { likes: number; comments: number };
@@ -121,7 +121,7 @@ type VideoStats = VideoLike & { likes: number; comments: number };
 export function summarise<T extends VideoStats>(videos: T[]) {
   const sum = (f: (v: T) => number) => videos.reduce((s, v) => s + f(v), 0);
   return {
-    uploads: videos.length,
+    covers: videos.length,
     views: sum((v) => v.views),
     likes: sum((v) => v.likes),
     comments: sum((v) => v.comments),
@@ -129,7 +129,7 @@ export function summarise<T extends VideoStats>(videos: T[]) {
   };
 }
 
-// The comparison shown on the uploads tile. Null when there is nothing fair
+// The comparison shown on the covers tile. Null when there is nothing fair
 // to compare with: All time, or a year with no year before it.
 export function previousPeriod(videos: VideoLike[], period: Period, now: Date) {
   if (period === "all") return null;
@@ -146,7 +146,7 @@ export function previousPeriod(videos: VideoLike[], period: Period, now: Date) {
   return { kind: "year" as const, year: period - 1, ...previousYearSamePeriod(videos, period, now) };
 }
 
-// Uploads in the year before `year`, up to the same day of the year as `now`
+// Covers in the year before `year`, up to the same day of the year as `now`
 // when `year` is the current year, so a partial year is compared fairly.
 // A past year is compared with the whole of the year before it.
 export function previousYearSamePeriod(videos: VideoLike[], year: number, now: Date) {
