@@ -10,6 +10,7 @@ Stack: Next.js 16 (App Router, Cache Components) · Neon Postgres · Drizzle · 
 cp .env.example .env      # fill in DATABASE_URL and the YouTube vars
 npm install
 npm run db:reset          # drops every table and enum, then pushes the schema (destructive)
+npm run db:seed           # loads reference data (groups and members); safe to re-run
 npm run dev
 ```
 
@@ -25,9 +26,9 @@ src/
   features/<domain>/   UI for one domain (added as features are rebuilt)
   components/          shared UI: ui/ (shadcn, via `npx shadcn add`), layout/, common/
   server/              the only code that touches the database or secret-keyed APIs (SEC-1)
-  db/                  Drizzle client and schema/ (one file per domain)
+  db/                  Drizzle client, schema/ (one file per domain) and seed/ (reference data)
   lib/                 framework-free helpers usable anywhere
-scripts/               db:reset
+scripts/               db:reset, db:seed
 docs/                  SRS.md (requirements); ui/<page>.html: UI options per page
 ```
 
@@ -41,4 +42,4 @@ Imports only point down: `app → features → components, lib` and `app, featur
 4. Add UI in `src/features/<domain>/components/`.
 5. Add the route under `src/app/`.
 
-Scripts: `db:reset` (drop everything, then push the schema), `db:studio`.
+Scripts: `db:reset` (drop everything, then push the schema), `db:seed` (load reference data, safe to re-run), `db:studio`.
