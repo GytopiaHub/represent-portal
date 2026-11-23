@@ -1,8 +1,9 @@
 # RepresENT Portal — Software Requirements Specification
 
-**Version:** 2.5 · **Date:** 2026-11-16 · **Audience:** Claude (implementation agent) and RepresENT admins
+**Version:** 2.6 · **Date:** 2026-11-23 · **Audience:** Claude (implementation agent) and RepresENT admins
 
 > **Changelog**
+> - **v2.6:** Added the groups page (section 6.3) at `/groups` and a shared top bar linking the pages (section 5.2). UI option E chosen in `docs/ui/groups.html`. UI option pages now show five options.
 > - **v2.5:** Added groups and their members as reference data for the member allocation list (section 6.2), with a `db:seed` script. SEC-4 now allows public artist reference data.
 > - **v2.4:** The channel dashboard counts official covers only. Side cams, relay dances, vlogs and other extras are dropped by a title rule (section 6.1).
 > - **v2.3:** Replaced the dashboard's Overview, Videos and Year tabs with a single view driven by a period control (section 6.1). UI option A chosen in `docs/ui/home-v2.html`.
@@ -93,12 +94,15 @@ A crew portal where members run song covers (crews, recruiting, scheduling), bro
 - **Stock styles for now:** the app uses the default shadcn/ui neutral theme in dark mode only, with no custom colours, gradients or decorative utilities. The logo is the only coloured element. The visual design is a later phase, once the core app works. Tokens are in `src/app/globals.css`.
 - Typography via `next/font`: "Inter" for all text.
 - Keep the RepresENT logo as a placeholder asset (`/public/logo.svg`) that is easy to replace.
-- **UI options:** before a new page or a redesign is built, it gets a self-contained `docs/ui/<page>.html` showing three options (**A**, **B**, **C**), each viewable at phone and desktop width. The chosen option is marked with a "Chosen" badge and date, and the files stay in the repo for reference.
+- **UI options:** before a new page or a redesign is built, it gets a self-contained `docs/ui/<page>.html` showing five options (**A** to **E**), each viewable at phone and desktop width. The chosen option is marked with a "Chosen" badge and date, and the files stay in the repo for reference.
 
 ### 5.2 Routes (App Router)
 ```
-app/page.tsx       Channel dashboard (6.1)
+app/page.tsx         Channel dashboard (6.1)
+app/groups/page.tsx  Groups (6.3)
 ```
+
+Every page sits under a shared top bar (`src/components/layout/site-nav.tsx`, rendered by the root layout): the logo, then a link per page, with the current page marked by `aria-current`. Add a link there when a page is added.
 
 ---
 
@@ -153,7 +157,7 @@ About 7 units per refresh at 133 videos, against the free 10,000 units a day.
 
 ### 6.2 Groups (reference data)
 
-The K-pop groups the crew covers, with their members. When a cover starts (a later feature), picking a group pre-fills the member allocation list with one slot per member, in line order. No UI reads these tables yet.
+The K-pop groups the crew covers, with their members. When a cover starts (a later feature), picking a group pre-fills the member allocation list with one slot per member, in line order. The groups page (6.3) lists them.
 
 **Tables** (`src/db/schema/groups.ts`):
 
@@ -165,3 +169,19 @@ A **slug** is a short, fixed ID made from the name, using lowercase letters, num
 **Scope:** groups only. Soloists are left out (a one-person list needs no pre-fill), and so are units and survival-show teams, until the crew covers one again. The starting list is the groups with 2 or more songs covered (counted from official covers, section 6.1, with re-versions counted once), plus groups the crew expects to cover again.
 
 **Seed:** `src/db/seed/groups.ts` holds the starting list, and `npm run db:seed` loads it. In one transaction it upserts each group by slug and replaces that group's members. Groups not in the file are left alone, so the script is safe to re-run. To add a group, add an entry with its members in line order and run `npm run db:seed`. Once members can edit groups in the app, the seed must become insert-only so it doesn't overwrite their edits.
+
+### 6.3 Groups page
+
+A page listing every group in the database (6.2) with its members, so members can check a line-up before a cover. Public while sign-in is deferred; it shows public artist reference data only.
+
+**Layout:** option E in `docs/ui/groups.html`.
+
+- **Summary tiles:** number of groups, number of members, and the largest group with its member count.
+- **Search:** one box that matches group names or stage names, ignoring case and accents (`rose` finds `Rosé`). A group stays in the list when its name or any member matches, and the match is highlighted. Filtering runs in the browser.
+- **Groups:** sorted by name, ignoring case. Each group is a section with its member count and a strip of member tiles in line order, each showing an initial, the position (`No. 1`) and the stage name. On phones the strip scrolls sideways; from 1024 px it wraps.
+
+**Data source:** `getGroups()` in `src/server/groups/queries.ts`, one Drizzle relational query for groups with members ordered by `position`.
+
+**Caching:** `"use cache"` with `cacheTag("groups")`. Success uses `cacheLife("hours")`, errors use `cacheLife("minutes")`. The route prerenders as static with hourly revalidation, so a `db:seed` run shows up within an hour. A future action that edits groups should call `revalidateTag("groups")`.
+
+**Failure handling (NFR-4):** if the query fails, the page renders a short message in place of the groups instead of an error page, and the error is logged with its message only. An empty table shows "No groups have been added yet."
