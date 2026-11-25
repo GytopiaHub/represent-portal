@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useState } from "react";
 import type { Group } from "@/server/groups/queries";
 import { Card } from "@/components/ui/card";
@@ -17,24 +18,12 @@ export function GroupBrowser({ groups }: { groups: Group[] }) {
   const q = fold(query.trim());
 
   const shown = useMemo(
-    () => (q ? groups.filter((g) => fold(g.name).includes(q) || g.members.some((m) => fold(m).includes(q))) : groups),
+    () => (q ? groups.filter((g) => fold(g.name).includes(q) || g.members.some((m) => fold(m.name).includes(q))) : groups),
     [groups, q],
   );
-  const members = groups.reduce((n, g) => n + g.members.length, 0);
-  const largest = groups.reduce((a, b) => (b.members.length > a.members.length ? b : a));
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <Stat label="Groups" value={groups.length.toLocaleString("en")} />
-        <Stat label="Members" value={members.toLocaleString("en")} />
-        <Stat
-          label="Largest"
-          value={largest.name}
-          hint={plural(largest.members.length, "member")}
-          className="col-span-2 sm:col-span-1"
-        />
-      </div>
       <div className="flex flex-col gap-2">
         <Input
           type="search"
@@ -44,53 +33,97 @@ export function GroupBrowser({ groups }: { groups: Group[] }) {
           onChange={(e) => setQuery(e.target.value)}
           className="h-11 sm:max-w-sm"
         />
-        <p className="text-xs text-muted-foreground" aria-live="polite">
-          {q ? `${shown.length} of ${plural(groups.length, "group")}` : "Members are in official line order."}
-        </p>
+        {q && (
+          <p className="text-xs text-muted-foreground" aria-live="polite">
+            {shown.length} of {plural(groups.length, "group")}
+          </p>
+        )}
       </div>
       {shown.length === 0 ? (
         <p className="py-8 text-center text-sm text-muted-foreground">No groups or members match &quot;{query.trim()}&quot;.</p>
       ) : (
-        shown.map((g) => (
-          <section key={g.slug} aria-labelledby={`group-${g.slug}`} className="flex flex-col gap-3">
-            <h2 id={`group-${g.slug}`} className="flex items-baseline gap-2 text-base font-semibold">
-              <Highlight text={g.name} q={q} />
-              <span className="text-xs font-normal text-muted-foreground">{plural(g.members.length, "member")}</span>
-            </h2>
-            {/* Scrolls sideways on phones so a 13-member group doesn't push the rest down; wraps on desktop. */}
-            <ol className="-mx-4 flex snap-x scroll-px-4 gap-2 overflow-x-auto px-4 pb-2 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:scroll-px-0">
-              {g.members.map((m, i) => (
-                <li
-                  key={m}
-                  className="flex w-28 shrink-0 snap-start flex-col gap-1.5 rounded-xl bg-card p-3 ring-1 ring-foreground/10"
-                >
-                  <span
-                    aria-hidden="true"
-                    className="flex size-10 items-center justify-center rounded-full bg-muted font-semibold text-muted-foreground"
-                  >
-                    {initial(m)}
-                  </span>
-                  <span className="text-xs text-muted-foreground">No. {i + 1}</span>
-                  <span className="text-sm leading-tight font-medium">
-                    <Highlight text={m} q={q} />
-                  </span>
-                </li>
-              ))}
-            </ol>
-          </section>
-        ))
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {shown.map((g) => (
+            <Card key={g.slug} className="gap-0 py-0">
+              <section aria-labelledby={`group-${g.slug}`}>
+                <Photo src={g.image} alt={g.name} className="aspect-video w-full text-3xl" sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" />
+                <div className="flex flex-col gap-3 p-4">
+                  <h2 id={`group-${g.slug}`} className="flex items-baseline gap-2 text-base font-semibold">
+                    <Highlight text={g.name} q={q} />
+                    <span className="text-xs font-normal text-muted-foreground">{plural(g.members.length, "member")}</span>
+                  </h2>
+                  <ul className="grid grid-cols-[repeat(auto-fill,minmax(4rem,1fr))] gap-x-2 gap-y-3">
+                    {g.members.map((m) => (
+                      <li key={m.name} className="flex flex-col items-center gap-1 text-center">
+                        <Photo
+                          src={m.image}
+                          alt={`${m.name} of ${g.name}`}
+                          fallback={m.name}
+                          className="size-13 rounded-full"
+                          sizes="52px"
+                        />
+                        <span className="text-xs leading-tight font-medium">
+                          <Highlight text={m.name} q={q} />
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </section>
+            </Card>
+          ))}
+        </div>
       )}
+      <p className="text-xs text-muted-foreground">
+        Photos from the{" "}
+        <a href="https://kpop.fandom.com/" className="underline underline-offset-2" target="_blank" rel="noreferrer">
+          K-pop Wiki
+        </a>{" "}
+        on Fandom.
+      </p>
     </div>
   );
 }
 
-function Stat({ label, value, hint, className }: { label: string; value: string; hint?: string; className?: string }) {
+// Shows the initial when there is no photo or it fails to load, so a missing
+// wiki page or a Fandom outage never leaves a broken image.
+function Photo({
+  src,
+  alt,
+  fallback = alt,
+  className,
+  sizes,
+}: {
+  src: string | null;
+  alt: string;
+  fallback?: string;
+  className?: string;
+  sizes: string;
+}) {
+  const [failed, setFailed] = useState<string | null>(null);
+  if (!src || failed === src) {
+    return (
+      <span
+        aria-hidden="true"
+        className={cn("flex shrink-0 items-center justify-center bg-muted font-semibold text-muted-foreground", className)}
+      >
+        {initial(fallback)}
+      </span>
+    );
+  }
   return (
-    <Card size="sm" className={cn("gap-1 px-4", className)}>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="truncate text-2xl font-semibold tracking-tight">{value}</p>
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-    </Card>
+    <span className={cn("relative block shrink-0 overflow-hidden bg-muted", className)}>
+      {/* Fandom already serves resized WebP, so skip the Next optimizer. */}
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        unoptimized
+        sizes={sizes}
+        className="object-cover object-top"
+        onError={() => setFailed(src)}
+      />
+    </span>
   );
 }
 
