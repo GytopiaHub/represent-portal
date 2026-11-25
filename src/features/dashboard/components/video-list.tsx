@@ -16,6 +16,8 @@ type SortKey = keyof typeof SORTS;
 
 // The list sits under the stats on the home page, so it starts short.
 const PAGE = 24;
+// The LCP thumbnail is somewhere in the first row, which is up to 4 wide at xl.
+const FIRST_ROW = 4;
 
 export function VideoList({ videos }: { videos: Video[] }) {
   const [query, setQuery] = useState("");
@@ -62,7 +64,7 @@ export function VideoList({ videos }: { videos: Video[] }) {
         <p className="py-8 text-center text-sm text-muted-foreground">No covers match &quot;{query}&quot;.</p>
       ) : (
         <ul className="grid gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {shown.slice(0, limit).map((v) => (
+          {shown.slice(0, limit).map((v, i) => (
             <li key={v.id}>
               <a
                 href={`https://www.youtube.com/watch?v=${v.id}`}
@@ -76,6 +78,7 @@ export function VideoList({ videos }: { videos: Video[] }) {
                       src={v.thumbnail}
                       alt=""
                       fill
+                      loading={i < FIRST_ROW ? "eager" : "lazy"}
                       sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
                       className="object-cover"
                     />
