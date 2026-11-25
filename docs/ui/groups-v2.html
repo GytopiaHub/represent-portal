@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UI options: groups v2</title>
+<!-- UI options for /groups with photos (SRS 6.3): a casual page for browsing
+     groups and their members, with each group's and member's latest comeback
+     photo. No summary tiles and no member positions. Groups and members here
+     are fictional, and the photos are placeholder blocks, so the page makes no
+     external requests. Members marked with no photo show the initial fallback.
+     Stock shadcn neutral dark theme. The previews are interactive.
+     To record a choice, set CHOSEN below, e.g. {option:"A", date:"2026-11-26"}. -->
+<style>
+:root{--bg:#0d0d0f;--panel:#18181b;--ink:#ececec;--muted:#9a9a9a;--line:#2a2a2e;--ok:#4cc27e}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;padding:20px 16px 40px}
+.wrap{max-width:1320px;margin:0 auto}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin-bottom:14px}
+h1{font-size:1.4rem;margin:0}.meta{color:var(--muted);font-size:13px}code{font:12.5px ui-monospace,Consolas,monospace;background:#ffffff10;padding:1px 6px;border-radius:4px}
+.status{margin-left:auto;font-size:13px;font-weight:600;padding:3px 10px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.status.done{border-color:var(--ok);color:var(--ok)}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px;flex-wrap:wrap}
+.seg button{font:inherit;font-weight:600;color:var(--muted);background:none;border:0;border-radius:7px;padding:6px 12px;cursor:pointer}
+.seg button[aria-pressed=true]{background:#ffffff14;color:var(--ink)}
+.badge{display:inline-block;margin-left:6px;font-size:11px;font-weight:700;color:#0d0d0f;background:var(--ok);border-radius:99px;padding:0 7px;vertical-align:1px}
+.note{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:14px}
+.note p{margin:0;color:var(--muted)}
+.stage{display:flex;justify-content:center;overflow:hidden}.frame{position:relative;flex-shrink:0}
+iframe{border:0;background:#000;border-radius:14px;box-shadow:0 0 0 1px var(--line),0 20px 60px #0008;transform-origin:top left;display:block}
+.dims{color:var(--muted);font-size:12px;text-align:center;margin-top:8px}
+</style></head><body><div class="wrap">
+<header><h1>Groups v2</h1><span class="meta">Route <code>/groups</code> · Source <code>src/app/groups/page.tsx</code> · Photos from the K-pop Wiki on Fandom, initials as fallback</span><span class="status" id="status"></span></header>
+<div class="bar"><div class="seg" id="tabs" role="group" aria-label="Option"></div>
+<div class="seg" id="sizes" role="group" aria-label="Viewport"><button data-w="390" data-h="844">Phone</button><button data-w="1280" data-h="800">Desktop</button></div></div>
+<div class="note" id="note"></div>
+<div class="stage" id="stage"><div class="frame" id="frame"><iframe id="view" title="Option preview" sandbox="allow-scripts"></iframe></div></div>
+<div class="dims" id="dims"></div>
+</div>
+
+<script type="text/plain" id="app-css">
+:root{--background:oklch(.145 0 0);--foreground:oklch(.985 0 0);--card:oklch(.205 0 0);--muted:oklch(.269 0 0);--muted-foreground:oklch(.708 0 0);--border:oklch(1 0 0/10%);--input:oklch(1 0 0/15%)}
+*{box-sizing:border-box}html{color-scheme:dark}
+body{margin:0;background:var(--background);color:var(--foreground);font:14px/1.5 Inter,"Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+h1,h2,h3,p,ol,ul{margin:0}ol,ul{padding:0;list-style:none}a{color:inherit;text-decoration:none}button,input{font:inherit;color:inherit}
+.nav{display:flex;align-items:center;gap:4px;padding:10px 16px;border-bottom:1px solid var(--border)}
+.logo{width:30px;height:30px;border-radius:50%;background:var(--muted);margin-right:10px;flex-shrink:0}
+.nav a{padding:10px 12px;border-radius:8px;color:var(--muted-foreground);font-weight:500;min-height:44px;display:flex;align-items:center}
+.nav a[aria-current]{color:var(--foreground);background:var(--muted)}
+.page{max-width:1152px;margin:0 auto;padding:24px 16px;display:flex;flex-direction:column;gap:16px}
+.title{font-size:24px;font-weight:700;letter-spacing:-.01em}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.mf{color:var(--muted-foreground)}.sm{font-size:13px}.xs{font-size:12px}
+input.search{width:100%;max-width:360px;height:44px;border-radius:10px;border:1px solid var(--input);background:transparent;padding:0 12px}
+input.search::placeholder{color:var(--muted-foreground)}
+mark{background:oklch(.985 0 0/20%);color:inherit;border-radius:3px}
+.empty{padding:32px 0;text-align:center;color:var(--muted-foreground)}
+.credit{font-size:12px;color:var(--muted-foreground)}.credit a{text-decoration:underline}
+/* Placeholder photo: a grey block with a label, standing in for a real image. */
+.ph{position:relative;background:var(--muted);display:flex;align-items:flex-end;justify-content:flex-start;overflow:hidden}
+.ph::after{content:attr(data-label);position:absolute;left:6px;bottom:4px;font-size:10px;color:oklch(.6 0 0);white-space:nowrap}
+.ph.l1{background:oklch(.32 0 0)}.ph.l2{background:oklch(.36 0 0)}.ph.l3{background:oklch(.29 0 0)}
+.fb{background:var(--muted);display:flex;align-items:center;justify-content:center;font-weight:600;color:var(--muted-foreground)}
+.wide{aspect-ratio:16/9;width:100%}.port{aspect-ratio:3/4;width:100%}.round{border-radius:50%}
+.gh{display:flex;align-items:baseline;gap:8px;font-size:16px;font-weight:600}
+.gh span{font-size:12px;font-weight:400;color:var(--muted-foreground)}
+.nm{font-size:13px;font-weight:500;line-height:1.3}
+/* A */
+.gridA{display:grid;gap:14px;grid-template-columns:1fr}
+@media(min-width:640px){.gridA{grid-template-columns:repeat(2,1fr)}}@media(min-width:1024px){.gridA{grid-template-columns:repeat(3,1fr)}}
+.gridA .body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:10px}
+.avs{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:10px 8px}
+.avs li{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center}
+.avs .round{width:52px;height:52px}
+/* B */
+.secB{display:flex;flex-direction:column;gap:10px}
+.topB{display:grid;gap:12px}@media(min-width:768px){.topB{grid-template-columns:320px 1fr;align-items:start}}
+.topB .wide{border-radius:12px}
+.strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;scroll-snap-type:x mandatory;margin:0 -16px;padding-left:16px;padding-right:16px;scroll-padding:0 16px}
+@media(min-width:768px){.strip{flex-wrap:wrap;overflow:visible;margin:0;padding:0}}
+.strip li{flex:0 0 96px;scroll-snap-align:start;display:flex;flex-direction:column;gap:6px}
+.strip .port{border-radius:10px}
+/* C */
+.gridC{display:grid;gap:10px;grid-template-columns:repeat(2,1fr)}
+@media(min-width:768px){.gridC{grid-template-columns:repeat(3,1fr)}}@media(min-width:1024px){.gridC{grid-template-columns:repeat(4,1fr)}}
+.gridC button{display:flex;flex-direction:column;gap:6px;background:none;border:0;padding:0;text-align:left;cursor:pointer}
+.gridC .wide{border-radius:12px}
+.back{background:none;border:0;color:var(--muted-foreground);padding:10px 0;min-height:44px;cursor:pointer;align-self:flex-start}
+.hero{border-radius:14px;max-height:420px}
+.gridM{display:grid;gap:12px;grid-template-columns:repeat(3,1fr)}
+@media(min-width:640px){.gridM{grid-template-columns:repeat(4,1fr)}}@media(min-width:1024px){.gridM{grid-template-columns:repeat(6,1fr)}}
+.gridM li{display:flex;flex-direction:column;gap:6px}.gridM .port{border-radius:10px}
+/* D */
+.listD{display:flex;flex-direction:column}
+.listD .row{display:flex;align-items:center;gap:12px;width:100%;background:none;border:0;border-bottom:1px solid var(--border);padding:10px 4px;cursor:pointer;text-align:left;min-height:64px}
+.listD .thumb{width:72px;height:48px;border-radius:8px;flex-shrink:0}
+.listD .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.stack{display:flex}.stack span{width:24px;height:24px;border-radius:50%;border:2px solid var(--card);margin-left:-6px;font-size:10px}.stack span:first-child{margin-left:0}
+.caret{color:var(--muted-foreground);transition:transform .15s}.open .caret{transform:rotate(90deg)}
+.listD .more{padding:12px 4px 16px;border-bottom:1px solid var(--border)}
+/* E */
+.chipsE{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin:0 -16px;padding-left:16px;padding-right:16px}
+@media(min-width:768px){.chipsE{flex-wrap:wrap;overflow:visible;margin:0;padding:0}}
+.chipsE button{flex-shrink:0;border:1px solid var(--border);background:none;border-radius:99px;padding:8px 14px;min-height:40px;cursor:pointer;white-space:nowrap}
+.chipsE button[aria-pressed=true]{background:var(--foreground);color:var(--background);border-color:var(--foreground)}
+.featE{display:grid;gap:16px}@media(min-width:1024px){.featE{grid-template-columns:1.3fr 1fr;align-items:start}}
+.featE .wide{border-radius:14px}
+.gridE{display:grid;gap:10px;grid-template-columns:repeat(3,1fr)}
+.gridE li{display:flex;flex-direction:column;gap:6px}.gridE .port{border-radius:10px}
+</script>
+
+<script type="text/plain" id="app-js">
+// Fictional groups. A null photo means the wiki had none, so the tile shows the initial.
+const G=[
+ ["NOVA LINE","Dreamcatch",["Haon","Riku","Seojun","Taein","Yul","Jiho","Ren"],["Yul"]],
+ ["Lumière","Velvet Hour",["Chloé","Dahye","Miyu","Sena","Yeseul"],[]],
+ ["ODD HOUR","Midnight Ticket",["Kael","Doyun","Minho","Sora","Hyunwoo","Eli","Joon","Taeo","Ryo"],["Eli","Taeo"]],
+ ["PRISMA","Glass Garden",["Aria","Bomi","Nayeon","Yuki"],[]],
+ ["SOLSTICE","Longest Day",["Ian","Woojin","Hyuk","Sungmin","Kai","Daeho"],["Daeho"]],
+ ["kiwi club","Sour Candy",["Hana","Juri","Ellie","Mina","Sooah"],[]],
+ ["&WAVE","Tidal",["J","Noah","Yeon","Shin","Leo","Haru"],["Haru"]],
+ ["MIRAE","Paper Plane",["Gyuri","Ines","Lumi","Taeri"],[]],
+].map(([name,era,members,nophoto])=>({name,era,members:members.map(m=>({name:m,photo:!nophoto.includes(m)}))}))
+ .sort((a,b)=>a.name.localeCompare(b.name,"en",{sensitivity:"base"}));
+const S={q:"",open:new Set(),sel:null};
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const norm=s=>s.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
+const hl=s=>{if(!S.q)return esc(s);const i=norm(s).indexOf(norm(S.q));return i<0?esc(s):esc(s.slice(0,i))+"<mark>"+esc(s.slice(i,i+S.q.length))+"</mark>"+esc(s.slice(i+S.q.length))};
+const hit=g=>!S.q||norm(g.name).includes(norm(S.q))||g.members.some(m=>norm(m.name).includes(norm(S.q)));
+const plural=(n,w)=>n+" "+w+(n===1?"":"s");
+const ini=n=>(n.replace(/^[^\p{L}\p{N}]+/u,"")[0]||"?").toUpperCase();
+const tone=s=>"l"+([...s].reduce((a,c)=>a+c.charCodeAt(0),0)%3+1);
+const gph=(g,cls)=>'<div class="ph '+tone(g.name)+' '+cls+'" role="img" aria-label="'+esc(g.name)+'" data-label="'+esc(g.name+" · "+g.era)+'"></div>';
+const mph=(m,cls,size)=>m.photo?'<div class="ph '+tone(m.name)+' '+cls+'" role="img" aria-label="'+esc(m.name)+'" data-label="'+(size==="sm"?"":"photo")+'"></div>'
+  :'<div class="fb '+cls+'" aria-hidden="true" style="font-size:'+(size==="sm"?"10px":"18px")+'">'+esc(ini(m.name))+'</div>';
+const nav='<nav class="nav"><span class="logo" aria-hidden="true"></span><a href="#">Dashboard</a><a href="#" aria-current="page">Groups</a></nav>';
+const search='<input class="search" type="search" data-q placeholder="Search groups or members" aria-label="Search groups or members" value="'+esc(S.q)+'">';
+const head=(extra="")=>'<h1 class="title">Groups</h1>'+extra;
+const credit='<p class="credit">Photos from the <a href="#">K-pop Wiki</a> on Fandom.</p>';
+const none='<p class="empty">No groups or members match "'+esc(S.q)+'".</p>';
+const openFor=g=>S.open.has(g.name)||(S.q&&g.members.some(m=>norm(m.name).includes(norm(S.q))));
+
+function A(){const list=G.filter(hit);
+  return head(search)+(list.length?'<div class="gridA">'+list.map(g=>'<section class="card">'+gph(g,"wide")+'<div class="body"><h2 class="gh">'+hl(g.name)+'<span>'+plural(g.members.length,"member")+'</span></h2><ul class="avs">'+
+    g.members.map(m=>'<li>'+mph(m,"round")+'<span class="nm">'+hl(m.name)+'</span></li>').join("")+'</ul></div></section>').join("")+'</div>':none)+credit}
+
+function B(){const list=G.filter(hit);
+  return head(search)+(list.length?list.map(g=>'<section class="secB"><h2 class="gh">'+hl(g.name)+'<span>'+plural(g.members.length,"member")+'</span></h2><div class="topB">'+gph(g,"wide")+
+    '<ul class="strip">'+g.members.map(m=>'<li>'+mph(m,"port")+'<span class="nm">'+hl(m.name)+'</span></li>').join("")+'</ul></div></section>').join(""):none)+credit}
+
+function C(){const g=G.find(x=>x.name===S.sel);
+  if(g)return '<button class="back" data-sel="">&larr; All groups</button>'+gph(g,"wide hero")+'<h2 class="gh" style="font-size:22px">'+esc(g.name)+'<span>'+plural(g.members.length,"member")+'</span></h2>'+
+    '<ul class="gridM">'+g.members.map(m=>'<li>'+mph(m,"port")+'<span class="nm">'+hl(m.name)+'</span></li>').join("")+'</ul>'+credit;
+  const list=G.filter(hit);
+  return head(search)+(list.length?'<div class="gridC">'+list.map(x=>'<button data-sel="'+esc(x.name)+'">'+gph(x,"wide")+'<span class="nm" style="font-size:14px;font-weight:600">'+hl(x.name)+'</span><span class="mf xs">'+
+    (S.q&&!norm(x.name).includes(norm(S.q))?x.members.filter(m=>norm(m.name).includes(norm(S.q))).map(m=>hl(m.name)).join(", "):plural(x.members.length,"member"))+'</span></button>').join("")+'</div>':none)+credit}
+
+function D(){const list=G.filter(hit);
+  return head(search)+'<div class="card" style="padding:4px 12px"><div class="listD">'+(list.length?list.map(g=>{const o=openFor(g);
+    return '<div class="'+(o?"open":"")+'"><button class="row" data-toggle="'+esc(g.name)+'" aria-expanded="'+!!o+'">'+gph(g,"thumb")+'<span class="info"><b>'+hl(g.name)+'</b><span class="stack">'+
+      g.members.slice(0,6).map(m=>mph(m,"","sm")).join("")+'</span></span><span class="mf sm">'+g.members.length+' <span class="caret">&#9656;</span></span></button>'+
+      (o?'<div class="more"><ul class="gridM">'+g.members.map(m=>'<li>'+mph(m,"port")+'<span class="nm">'+hl(m.name)+'</span></li>').join("")+'</ul></div>':"")+'</div>'}).join(""):none)+'</div></div>'+credit}
+
+function E(){const list=G.filter(hit);const g=list.find(x=>x.name===S.sel)||list[0];
+  return head(search)+(list.length?'<nav class="chipsE" aria-label="Groups">'+list.map(x=>'<button data-sel="'+esc(x.name)+'" aria-pressed="'+(x===g)+'">'+hl(x.name)+'</button>').join("")+'</nav>'+
+    '<div class="featE">'+gph(g,"wide")+'<div style="display:flex;flex-direction:column;gap:12px"><h2 class="gh" style="font-size:22px">'+esc(g.name)+'<span>'+plural(g.members.length,"member")+'</span></h2><ul class="gridE">'+
+    g.members.map(m=>'<li>'+mph(m,"port")+'<span class="nm">'+hl(m.name)+'</span></li>').join("")+'</ul></div></div>':none)+credit}
+
+const V={A,B,C,D,E};
+function render(){const f=document.activeElement&&document.activeElement.matches("[data-q]");const pos=f?document.activeElement.selectionStart:0;
+  document.body.innerHTML=nav+'<main class="page">'+V[OPT]()+'</main>';
+  if(f){const i=document.querySelector("[data-q]");i.focus();i.setSelectionRange(pos,pos)}}
+document.addEventListener("input",e=>{if(e.target.matches("[data-q]")){S.q=e.target.value.trim();render()}});
+document.addEventListener("click",e=>{const t=e.target.closest("[data-toggle],[data-sel]");if(!t)return;
+  if(t.dataset.toggle!==undefined){const n=t.dataset.toggle;S.open.has(n)?S.open.delete(n):S.open.add(n);render()}
+  else{S.sel=t.dataset.sel||null;render();if(OPT==="C")scrollTo(0,0)}});
+render();
+</script>
+
+<script>
+const CHOSEN = { option: "A", date: "2026-11-26" };
+const OPTIONS = [
+  { key: "A", name: "Group cards", note: "Each group is a card with its comeback photo on top and members below as round photos with names. 1 column on phones, 2 on tablets, 3 on desktop. Everything is visible at once, closest to a casual browse." },
+  { key: "B", name: "Photo strips", note: "The current page with photos: a section per group, the group photo, then a strip of portrait member photos. The strip scrolls sideways on phones and wraps beside the group photo on desktop." },
+  { key: "C", name: "Gallery and group view", note: "A grid of group photos with names. Tap one to open that group: a large group photo and a grid of member portraits, with a back button. Searching a member shows their name under the group they're in." },
+  { key: "D", name: "Compact list", note: "One row per group with a small photo, the name and a stack of member faces. Tap to expand into member portraits. Shortest page on phones, but photos are small until you open a group." },
+  { key: "E", name: "One group at a time", note: "A row of group name chips, then the selected group's large photo and member portraits side by side on desktop. Search filters the chips. Feels like a profile page, but you only see one group at once." },
+];
+
+const $ = (id) => document.getElementById(id);
+let cur = "A", size = { w: 390, h: 844 };
+try { const s = JSON.parse(localStorage.getItem("ui-opt-size") || "null"); if (s) size = s; } catch (e) {}
+const [hOpt, hSize] = location.hash.slice(1).split("/");
+if (OPTIONS.some((o) => o.key === hOpt)) cur = hOpt;
+if (hSize === "desktop") size = { w: 1280, h: 800 }; else if (hSize === "phone") size = { w: 390, h: 844 };
+$("status").textContent = CHOSEN ? "Chosen: " + CHOSEN.option + " · " + CHOSEN.date : "Not chosen yet";
+if (CHOSEN) $("status").classList.add("done");
+OPTIONS.forEach((o) => {
+  const b = document.createElement("button");
+  b.dataset.k = o.key;
+  b.innerHTML = o.key + " · " + o.name + (CHOSEN && CHOSEN.option === o.key ? '<span class="badge">Chosen</span>' : "");
+  b.onclick = () => { cur = o.key; render(); };
+  $("tabs").appendChild(b);
+});
+document.querySelectorAll("#sizes button").forEach((b) => b.onclick = () => {
+  size = { w: +b.dataset.w, h: +b.dataset.h };
+  try { localStorage.setItem("ui-opt-size", JSON.stringify(size)); } catch (e) {}
+  render();
+});
+function fit() {
+  const s = Math.min(1, $("stage").clientWidth / size.w), f = $("view");
+  f.style.width = size.w + "px"; f.style.height = size.h + "px"; f.style.transform = "scale(" + s + ")";
+  $("frame").style.width = size.w * s + "px"; $("frame").style.height = size.h * s + "px";
+  $("dims").textContent = size.w + " x " + size.h + (s < 1 ? " (shown at " + Math.round(s * 100) + "%)" : "");
+}
+function render() {
+  const o = OPTIONS.find((x) => x.key === cur);
+  document.querySelectorAll("#tabs button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.k === cur));
+  document.querySelectorAll("#sizes button").forEach((b) => b.setAttribute("aria-pressed", +b.dataset.w === size.w));
+  $("note").innerHTML = "<p><b>" + o.key + " · " + o.name + ".</b> " + o.note + "</p>";
+  $("view").srcdoc = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>' +
+    $("app-css").textContent + '</style></head><body><script>const OPT="' + cur + '";' +
+    $("app-js").textContent + "<\/script></body></html>";
+  fit();
+}
+addEventListener("resize", fit);
+render();
+</script></body></html>

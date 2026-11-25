@@ -1,8 +1,9 @@
 # RepresENT Portal — Software Requirements Specification
 
-**Version:** 2.6 · **Date:** 2026-11-23 · **Audience:** Claude (implementation agent) and RepresENT admins
+**Version:** 2.7 · **Date:** 2026-11-26 · **Audience:** Claude (implementation agent) and RepresENT admins
 
 > **Changelog**
+> - **v2.7:** The groups page (section 6.3) is now a casual browse page: no summary tiles, no member positions, and each group and member shows their latest comeback photo from the K-pop Wiki on Fandom, with initials as the fallback. UI option A chosen in `docs/ui/groups-v2.html`.
 > - **v2.6:** Added the groups page (section 6.3) at `/groups` and a shared top bar linking the pages (section 5.2). UI option E chosen in `docs/ui/groups.html`. UI option pages now show five options.
 > - **v2.5:** Added groups and their members as reference data for the member allocation list (section 6.2), with a `db:seed` script. SEC-4 now allows public artist reference data.
 > - **v2.4:** The channel dashboard counts official covers only. Side cams, relay dances, vlogs and other extras are dropped by a title rule (section 6.1).
@@ -70,6 +71,7 @@ A crew portal where members run song covers (crews, recruiting, scheduling), bro
   - Enable **GitHub secret scanning + push protection** and **Dependabot** alerts on the repo.
   - Seed data and fixtures use **fictional** people only. No real names, emails or personal data in the repo, issues or commit messages.
   - **Exception:** public artist reference data (K-pop group names and idol stage names, as already public on YouTube) may be committed. Crew members' names, social handles and other personal data never may, including the dancer and crew credits in video descriptions.
+  - Artist photos are linked from the K-pop Wiki on Fandom (section 6.3), never downloaded, stored or committed.
   - Security must never depend on the code being hidden.
   - GitHub Actions workflows that use secrets run only on `schedule`/`workflow_dispatch` and `push` to `main`, never on `pull_request` from forks.
   - Keep a `SECURITY.md` with a contact for reporting vulnerabilities.
@@ -172,16 +174,20 @@ A **slug** is a short, fixed ID made from the name, using lowercase letters, num
 
 ### 6.3 Groups page
 
-A page listing every group in the database (6.2) with its members, so members can check a line-up before a cover. Public while sign-in is deferred; it shows public artist reference data only.
+A casual page for browsing every group in the database (6.2) and getting an overview of its members. Public while sign-in is deferred; it shows public artist reference data only. Members are shown in line order but never numbered, so nobody looks ranked.
 
-**Layout:** option E in `docs/ui/groups.html`.
+**Layout:** option A in `docs/ui/groups-v2.html`. The earlier layout, option E in `docs/ui/groups.html`, is kept for reference.
 
-- **Summary tiles:** number of groups, number of members, and the largest group with its member count.
 - **Search:** one box that matches group names or stage names, ignoring case and accents (`rose` finds `Rosé`). A group stays in the list when its name or any member matches, and the match is highlighted. Filtering runs in the browser.
-- **Groups:** sorted by name, ignoring case. Each group is a section with its member count and a strip of member tiles in line order, each showing an initial, the position (`No. 1`) and the stage name. On phones the strip scrolls sideways; from 1024 px it wraps.
+- **Groups:** sorted by name, ignoring case, as a grid of cards: 1 column on phones, 2 from 640 px, 3 from 1024 px. Each card has the group's photo (16:9), its name and member count, and its members as round photos with stage names.
+- **Fallback:** when a group or member has no photo, or the photo fails to load, the tile shows the name's initial instead.
+- **Credit:** a line under the grid links to the K-pop Wiki on Fandom.
 
-**Data source:** `getGroups()` in `src/server/groups/queries.ts`, one Drizzle relational query for groups with members ordered by `position`.
+**Data source:** `getGroups()` in `src/server/groups/queries.ts` merges two cached lookups:
 
-**Caching:** `"use cache"` with `cacheTag("groups")`. Success uses `cacheLife("hours")`, errors use `cacheLife("minutes")`. The route prerenders as static with hourly revalidation, so a `db:seed` run shows up within an hour. A future action that edits groups should call `revalidateTag("groups")`.
+- `loadGroups()`: one Drizzle relational query for groups with members ordered by `position`.
+- `getGroupImages()` in `src/server/groups/images.ts`: photos from the [K-pop Wiki API](https://kpop.fandom.com/api.php) (MediaWiki `prop=pageimages`), whose editors keep each page's lead image on the newest concept photo. It reads each group's page, following redirects (`TOMORROW X TOGETHER` is `TXT` there), and matches each member to a link on that page by stage name, ignoring case, accents and punctuation. A title tagged with the group (`Jay (ENHYPEN)`) wins; otherwise only a single match counts. Wrong or missing matches go in `TITLE_OVERRIDES`. It then fetches resized thumbnails (960 px for groups, 480 px for members), 50 titles per request. Images load straight from Fandom with `unoptimized`, so they skip the Next image optimizer and need no `remotePatterns` entry.
 
-**Failure handling (NFR-4):** if the query fails, the page renders a short message in place of the groups instead of an error page, and the error is logged with its message only. An empty table shows "No groups have been added yet."
+**Caching:** each lookup has its own `"use cache"` scope, because an outer `cacheLife` overrides inner ones. Groups use `cacheTag("groups")` and `cacheLife("hours")`; photos use `cacheTag("group-images")` and `cacheLife("days")`. Errors in either use `cacheLife("minutes")`. The route prerenders as static, so a `db:seed` run shows up within an hour and a new comeback photo within a day. A future action that edits groups should call `revalidateTag("groups")`.
+
+**Failure handling (NFR-4):** if the groups query fails, the page renders a short message in place of the groups instead of an error page, and the error is logged with its message only. If the photo lookup fails, the page still renders with initials everywhere and logs one line. An empty table shows "No groups have been added yet."
