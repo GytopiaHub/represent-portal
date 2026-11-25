@@ -37,4 +37,5 @@ export const seedGroups: SeedGroup[] = [
   { slug: "katseye", name: "KATSEYE", members: ["Sophia", "Lara", "Daniela", "Megan", "Manon", "Yoonchae"] },
   { slug: "girlset", name: "GIRLSET", members: ["Lexie", "Savannah", "Camila", "Kendall"] },
   { slug: "xlov", name: "XLOV", members: ["Wumuti", "Rui", "Hyun", "Haru"] },
+  { slug: "enhypen", name: "ENHYPEN", members: ["Jungwon", "Jay", "Jake", "Sunghoon", "Sunoo", "Ni-ki"] },
 ];
