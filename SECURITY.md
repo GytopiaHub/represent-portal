@@ -1,6 +1,6 @@
 # Security policy
 
-This repository is public, but the RepresENT Portal's security does not depend on the code being hidden. All database access is server-side only, and secrets live only in environment variables. Authentication is being rebuilt and is not in the app yet.
+This repository is public, but the RepresENT Portal's security does not depend on the code being hidden. All database access is server-side only, and secrets live only in environment variables. Members sign in with Google, and only Google accounts on the admin and member email lists (held in environment variables) are let in.
 
 ## Reporting a vulnerability
 

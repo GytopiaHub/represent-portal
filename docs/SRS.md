@@ -1,8 +1,9 @@
 # RepresENT Portal — Software Requirements Specification
 
-**Version:** 2.8 · **Date:** 2026-11-26 · **Audience:** Claude (implementation agent) and RepresENT admins
+**Version:** 2.9 · **Date:** 2026-11-26 · **Audience:** Claude (implementation agent) and RepresENT admins
 
 > **Changelog**
+> - **v2.9:** Added Google sign-in with Better Auth and two roles, admin and member, set by email lists in env vars (section 6.4). New `/login` and `/profile` pages, UI option A chosen in `docs/ui/login.html`. The dashboard and groups pages stay public for now.
 > - **v2.8:** Group photos on the groups page (section 6.3) use a fixed 4:3 frame. Portrait photos show whole over a blurred copy of themselves instead of being cropped through faces.
 > - **v2.7:** The groups page (section 6.3) is now a casual browse page: no summary tiles, no member positions, and each group and member shows their latest comeback photo from the K-pop Wiki on Fandom, with initials as the fallback. UI option A chosen in `docs/ui/groups-v2.html`.
 > - **v2.6:** Added the groups page (section 6.3) at `/groups` and a shared top bar linking the pages (section 5.2). UI option E chosen in `docs/ui/groups.html`. UI option pages now show five options.
@@ -43,7 +44,7 @@ A crew portal where members run song covers (crews, recruiting, scheduling), bro
 | Framework | **Next.js (App Router) + TypeScript** | Server Components for reads. Server Actions for mutations. Route Handlers (`app/api/**`) for JSON endpoints. |
 | Database | **Neon Postgres** (Free plan) | `@neondatabase/serverless` driver. |
 | ORM / migrations | **Drizzle ORM + drizzle-kit** | Schema lives in `src/db/schema/` (one file per domain, re-exported from `index.ts`). |
-| Auth | **Deferred** | Google OAuth will be added later. Until then the app has no sign-in. |
+| Auth | **Better Auth** (Google provider, Drizzle adapter) | Database sessions in our own Neon tables (section 6.4). |
 | Validation | **Zod** | Validate every Server Action and Route Handler input. Install it with the first feature that takes input. |
 | UI | Tailwind CSS + shadcn/ui | Add components with `npx shadcn add <name>` as features need them. |
 | Client data | Server Components + `revalidatePath`/`revalidateTag` | |
@@ -58,13 +59,17 @@ A crew portal where members run song covers (crews, recruiting, scheduling), bro
 |---|---|
 | `DATABASE_URL` | Neon connection string. |
 | `YOUTUBE_API_KEY` | YouTube Data API v3 key. Server only; never sent to the browser or put in a URL. Restrict it to the YouTube Data API v3 in Google Cloud Console. |
+| `BETTER_AUTH_SECRET` | Signs session cookies. Generate with `openssl rand -base64 32`. Use a different value in each environment. |
+| `BETTER_AUTH_URL` | The app's own URL, e.g. `http://localhost:3000`. |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google OAuth client of type Web application. Redirect URI: `<BETTER_AUTH_URL>/api/auth/callback/google`. |
+| `ADMIN_EMAILS`, `MEMBER_EMAILS` | Who may sign in, as comma-separated Google emails (section 6.4). |
 | `YOUTUBE_CHANNEL_HANDLE` | Handle of the channel the dashboard reports on, e.g. `@Repres_ENT`. Resolved to the channel ID at runtime. If the handle is renamed on YouTube, update this. |
 
 ---
 
 ## 3. Security & Privacy
 
-- **SEC-1 Data access layer:** all database access, and every call to a third-party API that needs a secret, goes through `src/server/**` (files there import `server-only`). Client components never import the DB client. ESLint enforces the import layering (`eslint.config.mjs`). Authorization guards are added with auth.
+- **SEC-1 Data access layer:** all database access, and every call to a third-party API that needs a secret, goes through `src/server/**` (files there import `server-only`). Client components never import the DB client. ESLint enforces the import layering (`eslint.config.mjs`). Pages that need a signed-in user call `getCurrentUser()` or `requireUser()` from `src/server/auth/session.ts`; hiding UI is never the only check.
 - **SEC-2 Secrets:** all secrets live in environment variables (Vercel in production, `.env` locally), never in code.
 - **SEC-3 Mutations:** Server Actions get built-in CSRF protection from Next.js. Any custom POST route handlers check `Origin`.
 - **SEC-4 Public repository:** the source code is public, so:
@@ -103,6 +108,9 @@ A crew portal where members run song covers (crews, recruiting, scheduling), bro
 ```
 app/page.tsx         Channel dashboard (6.1)
 app/groups/page.tsx  Groups (6.3)
+app/login/page.tsx   Sign in (6.4)
+app/profile/page.tsx Profile (6.4)
+app/api/auth/[...all]/route.ts  Better Auth endpoints (6.4)
 ```
 
 Every page sits under a shared top bar (`src/components/layout/site-nav.tsx`, rendered by the root layout): the logo, then a link per page, with the current page marked by `aria-current`. Add a link there when a page is added.
@@ -193,3 +201,33 @@ A casual page for browsing every group in the database (6.2) and getting an over
 **Caching:** each lookup has its own `"use cache"` scope, because an outer `cacheLife` overrides inner ones. Groups use `cacheTag("groups")` and `cacheLife("hours")`; photos use `cacheTag("group-images")` and `cacheLife("days")`. Errors in either use `cacheLife("minutes")`. The route prerenders as static, so a `db:seed` run shows up within an hour and a new comeback photo within a day. A future action that edits groups should call `revalidateTag("groups")`.
 
 **Failure handling (NFR-4):** if the groups query fails, the page renders a short message in place of the groups instead of an error page, and the error is logged with its message only. If the photo lookup fails, the page still renders with initials everywhere and logs one line. An empty table shows "No groups have been added yet."
+
+### 6.4 Sign-in and roles
+
+Every crew member signs in with Google. Nothing else in the app needs a sign-in yet: the dashboard and groups pages stay public until a later step locks them.
+
+**Roles:**
+
+| Role | Who | Can do |
+|---|---|---|
+| `admin` | Crew leaders, and the app owner | Same as members for now. Admin tools come with later features. |
+| `member` | Everyone else on the crew | Sign in and see their profile. |
+
+**Who may sign in:** two env vars, `ADMIN_EMAILS` and `MEMBER_EMAILS`, each a comma-separated list of Google emails, matched ignoring case and spaces (`roleForEmail` in `src/lib/roles.ts`). They're env vars because the repo is public and real emails can't be committed (SEC-4). An email on both lists is an admin. Changing a list needs a redeploy in production, or a dev server restart locally.
+
+- An account on neither list is refused at Google sign-in by Better Auth's `user.validateUserInfo` hook, before any user row is created, and lands on `/login` with "This Google account isn't on the crew list. Ask a crew leader to add you." The hook also runs on every later Google sign-in.
+- The role is never stored. `getCurrentUser()` works it out from the lists on every request, so someone taken off both lists counts as signed out straight away, even with a live session.
+- When roles are managed in the app, the role moves into the `user` table and these lists become the bootstrap.
+
+**Setup** (`src/server/auth/auth.ts`): Better Auth with the Drizzle adapter, the Google provider (scopes `openid email profile` only, so the consent screen needs no Google verification) and the `nextCookies()` plugin. Endpoints are mounted at `/api/auth/*`. Sign-in and sign-out run in the browser through the Better Auth React client (`src/features/auth/auth-client.ts`).
+
+**Tables** (`src/db/schema/auth.ts`): Better Auth's core tables `user`, `session`, `account` and `verification`, with snake_case columns. The export names must stay as they are, because the adapter looks tables up by them.
+
+**Pages:** option A in `docs/ui/login.html`, a centred card on both pages.
+
+- `/login`: the logo, "Sign in to RepresENT" and a Sign in with Google button. Shows the not-on-the-list message for `?error=not_on_list` and "Sign-in didn't work. Try again." for any other error. A signed-in user is sent to `/profile`.
+- `/profile`: the Google photo (or the name's initial), name, email, role and a Sign out button, which returns to `/login`. A signed-out user is sent to `/login`.
+- The top bar has a Profile link, so it stays static and the public pages keep prerendering.
+
+Both pages read the session at request time, so their content streams in behind `<Suspense>` with a skeleton (Cache Components).
+

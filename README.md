@@ -2,7 +2,7 @@
 
 Crew portal for RepresENT, a K-pop dance cover crew. The code has been reset to its foundation, and features are being rebuilt one at a time. The spec is [docs/SRS.md](docs/SRS.md).
 
-Stack: Next.js 16 (App Router, Cache Components) · Neon Postgres · Drizzle · Tailwind + shadcn/ui. Auth (Google OAuth) is deferred.
+Stack: Next.js 16 (App Router, Cache Components) · Neon Postgres · Drizzle · Better Auth (Google sign-in) · Tailwind + shadcn/ui.
 
 ## Quick start
 
@@ -16,7 +16,13 @@ npm run dev
 
 ## Environment
 
-`DATABASE_URL` (Neon), `YOUTUBE_API_KEY` and `YOUTUBE_CHANNEL_HANDLE` (the home page channel dashboard). See [.env.example](.env.example) and SRS section 2.2. In production, set them in Vercel.
+`DATABASE_URL` (Neon), `YOUTUBE_API_KEY` and `YOUTUBE_CHANNEL_HANDLE` (the home page channel dashboard), and the sign-in variables below. See [.env.example](.env.example) and SRS section 2.2. In production, set them in Vercel.
+
+### Google sign-in
+
+1. In Google Cloud Console, create an OAuth client of type Web application. Add the redirect URI `http://localhost:3000/api/auth/callback/google`, plus `https://<your-domain>/api/auth/callback/google` for production.
+2. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `BETTER_AUTH_URL` and `BETTER_AUTH_SECRET` (`openssl rand -base64 32`).
+3. List who may sign in: `ADMIN_EMAILS` and `MEMBER_EMAILS`, comma-separated Google emails. Anyone on neither list is refused (SRS 6.4).
 
 ## Project structure
 
