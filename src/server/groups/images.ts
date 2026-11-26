@@ -16,9 +16,12 @@ const BATCH = 50;
 const TITLE_OVERRIDES: Record<string, string> = {};
 
 type Lookup = { slug: string; name: string; members: string[] };
-export type GroupImages = { group: string | null; members: Record<string, string | null> };
+export type Photo = { src: string; width: number; height: number };
+// Size is kept so the page can tell portrait photos from landscape ones.
+export type GroupImages = { group: Photo | null; members: Record<string, string | null> };
 
-type Page = { title: string; missing?: boolean; thumbnail?: { source: string }; links?: { title: string }[] };
+type Thumb = { source: string; width: number; height: number };
+type Page = { title: string; missing?: boolean; thumbnail?: Thumb; links?: { title: string }[] };
 type Reply = {
   query?: { normalized?: Rename[]; redirects?: Rename[]; pages?: Page[] };
   continue?: Record<string, string>;
@@ -69,7 +72,8 @@ async function lookup(groups: Lookup[]) {
       const title = memberTitles.get(`${g.slug}/${m}`);
       members[m] = (title && memberPages.get(title)?.thumbnail?.source) || null;
     }
-    result[g.slug] = { group: groupPages.get(g.name)?.thumbnail?.source ?? null, members };
+    const t = groupPages.get(g.name)?.thumbnail;
+    result[g.slug] = { group: t ? { src: t.source, width: t.width, height: t.height } : null, members };
   }
   return result;
 }

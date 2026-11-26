@@ -1,8 +1,9 @@
 # RepresENT Portal — Software Requirements Specification
 
-**Version:** 2.7 · **Date:** 2026-11-26 · **Audience:** Claude (implementation agent) and RepresENT admins
+**Version:** 2.8 · **Date:** 2026-11-26 · **Audience:** Claude (implementation agent) and RepresENT admins
 
 > **Changelog**
+> - **v2.8:** Group photos on the groups page (section 6.3) use a fixed 4:3 frame. Portrait photos show whole over a blurred copy of themselves instead of being cropped through faces.
 > - **v2.7:** The groups page (section 6.3) is now a casual browse page: no summary tiles, no member positions, and each group and member shows their latest comeback photo from the K-pop Wiki on Fandom, with initials as the fallback. UI option A chosen in `docs/ui/groups-v2.html`.
 > - **v2.6:** Added the groups page (section 6.3) at `/groups` and a shared top bar linking the pages (section 5.2). UI option E chosen in `docs/ui/groups.html`. UI option pages now show five options.
 > - **v2.5:** Added groups and their members as reference data for the member allocation list (section 6.2), with a `db:seed` script. SEC-4 now allows public artist reference data.
@@ -179,14 +180,15 @@ A casual page for browsing every group in the database (6.2) and getting an over
 **Layout:** option A in `docs/ui/groups-v2.html`. The earlier layout, option E in `docs/ui/groups.html`, is kept for reference.
 
 - **Search:** one box that matches group names or stage names, ignoring case and accents (`rose` finds `Rosé`). A group stays in the list when its name or any member matches, and the match is highlighted. Filtering runs in the browser.
-- **Groups:** sorted by name, ignoring case, as a grid of cards: 1 column on phones, 2 from 640 px, 3 from 1024 px. Each card has the group's photo (16:9), its name and member count, and its members as round photos with stage names.
+- **Groups:** sorted by name, ignoring case, as a grid of cards: 1 column on phones, 2 from 640 px, 3 from 1024 px. Each card has the group's photo, its name and member count, and its members as round photos with stage names.
+- **Group photos:** every card uses the same 4:3 frame so rows line up. Landscape photos fill it, trimmed slightly at the sides. Portrait photos (about half of them) show whole, centred over a blurred, enlarged copy of the same photo, so the sides take the photo's colours. The copy reuses the same file, so it costs no extra download.
 - **Fallback:** when a group or member has no photo, or the photo fails to load, the tile shows the name's initial instead.
 - **Credit:** a line under the grid links to the K-pop Wiki on Fandom.
 
 **Data source:** `getGroups()` in `src/server/groups/queries.ts` merges two cached lookups:
 
 - `loadGroups()`: one Drizzle relational query for groups with members ordered by `position`.
-- `getGroupImages()` in `src/server/groups/images.ts`: photos from the [K-pop Wiki API](https://kpop.fandom.com/api.php) (MediaWiki `prop=pageimages`), whose editors keep each page's lead image on the newest concept photo. It reads each group's page, following redirects (`TOMORROW X TOGETHER` is `TXT` there), and matches each member to a link on that page by stage name, ignoring case, accents and punctuation. A title tagged with the group (`Jay (ENHYPEN)`) wins; otherwise only a single match counts. Wrong or missing matches go in `TITLE_OVERRIDES`. It then fetches resized thumbnails (960 px for groups, 480 px for members), 50 titles per request. Images load straight from Fandom with `unoptimized`, so they skip the Next image optimizer and need no `remotePatterns` entry.
+- `getGroupImages()` in `src/server/groups/images.ts`: photos from the [K-pop Wiki API](https://kpop.fandom.com/api.php) (MediaWiki `prop=pageimages`), whose editors keep each page's lead image on the newest concept photo. It reads each group's page, following redirects (`TOMORROW X TOGETHER` is `TXT` there), and matches each member to a link on that page by stage name, ignoring case, accents and punctuation. A title tagged with the group (`Jay (ENHYPEN)`) wins; otherwise only a single match counts. Wrong or missing matches go in `TITLE_OVERRIDES`. It then fetches resized thumbnails (960 px for groups, 480 px for members), 50 titles per request. Group photos keep their width and height so the page can tell portrait from landscape. Images load straight from Fandom with `unoptimized`, so they skip the Next image optimizer and need no `remotePatterns` entry.
 
 **Caching:** each lookup has its own `"use cache"` scope, because an outer `cacheLife` overrides inner ones. Groups use `cacheTag("groups")` and `cacheLife("hours")`; photos use `cacheTag("group-images")` and `cacheLife("days")`. Errors in either use `cacheLife("minutes")`. The route prerenders as static, so a `db:seed` run shows up within an hour and a new comeback photo within a day. A future action that edits groups should call `revalidateTag("groups")`.
 

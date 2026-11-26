@@ -1,15 +1,16 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
-import { getGroupImages } from "./images";
+import { getGroupImages, type Photo } from "./images";
 
+export type { Photo };
 export type Member = { name: string; image: string | null };
 
 export type Group = {
   slug: string;
   name: string;
   // Latest comeback photo, or null to show the fallback.
-  image: string | null;
+  image: Photo | null;
   // In official line order.
   members: Member[];
 };
