@@ -46,7 +46,7 @@ export function GroupBrowser({ groups }: { groups: Group[] }) {
           {shown.map((g) => (
             <Card key={g.slug} className="gap-0 py-0">
               <section aria-labelledby={`group-${g.slug}`}>
-                <Photo src={g.image} alt={g.name} className="aspect-video w-full text-3xl" sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" />
+                <GroupPhoto group={g} />
                 <div className="flex flex-col gap-3 p-4">
                   <h2 id={`group-${g.slug}`} className="flex items-baseline gap-2 text-base font-semibold">
                     <Highlight text={g.name} q={q} />
@@ -85,6 +85,23 @@ export function GroupBrowser({ groups }: { groups: Group[] }) {
   );
 }
 
+// Every card uses the same 4:3 frame so rows line up. Landscape photos fill it;
+// portrait ones show whole, over a blurred copy of themselves so the sides
+// take the photo's own colours instead of grey bars.
+function GroupPhoto({ group: g }: { group: Group }) {
+  const portrait = !!g.image && g.image.height > g.image.width;
+  return (
+    <Photo
+      src={g.image?.src ?? null}
+      alt={g.name}
+      className="aspect-4/3 w-full text-3xl"
+      imgClassName={portrait ? "object-contain" : undefined}
+      backdrop={portrait}
+      sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+    />
+  );
+}
+
 // Shows the initial when there is no photo or it fails to load, so a missing
 // wiki page or a Fandom outage never leaves a broken image.
 function Photo({
@@ -92,12 +109,16 @@ function Photo({
   alt,
   fallback = alt,
   className,
+  imgClassName = "object-cover object-top",
+  backdrop = false,
   sizes,
 }: {
   src: string | null;
   alt: string;
   fallback?: string;
   className?: string;
+  imgClassName?: string;
+  backdrop?: boolean;
   sizes: string;
 }) {
   const [failed, setFailed] = useState<string | null>(null);
@@ -113,14 +134,18 @@ function Photo({
   }
   return (
     <span className={cn("relative block shrink-0 overflow-hidden bg-muted", className)}>
-      {/* Fandom already serves resized WebP, so skip the Next optimizer. */}
+      {/* Fandom already serves resized WebP, so skip the Next optimizer. The
+          backdrop reuses the same file, so it costs no extra download. */}
+      {backdrop && (
+        <Image src={src} alt="" aria-hidden fill unoptimized sizes={sizes} className="scale-125 object-cover blur-2xl" />
+      )}
       <Image
         src={src}
         alt={alt}
         fill
         unoptimized
         sizes={sizes}
-        className="object-cover object-top"
+        className={imgClassName}
         onError={() => setFailed(src)}
       />
     </span>
