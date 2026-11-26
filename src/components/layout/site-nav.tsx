@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 const LINKS = [
   { href: "/", label: "Dashboard" },
   { href: "/groups", label: "Groups" },
+  { href: "/profile", label: "Profile" },
 ] as const;
 
 export function SiteNav() {

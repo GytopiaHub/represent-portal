@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UI options: login and profile</title>
+<!-- UI options for /login and /profile (SRS 6.4): Google sign-in, the error
+     shown to accounts that aren't on the crew list, and a profile page that
+     shows the signed-in user's role (admin or member). The person here is
+     fictional and the photo is a placeholder block, so the page makes no
+     external requests. Stock shadcn neutral dark theme. The previews are
+     interactive: switch screens with the Screen control.
+     To record a choice, set CHOSEN below, e.g. {option:"A", date:"2026-11-26"}. -->
+<style>
+:root{--bg:#0d0d0f;--panel:#18181b;--ink:#ececec;--muted:#9a9a9a;--line:#2a2a2e;--ok:#4cc27e}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;padding:20px 16px 40px}
+.wrap{max-width:1320px;margin:0 auto}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin-bottom:14px}
+h1{font-size:1.4rem;margin:0}.meta{color:var(--muted);font-size:13px}code{font:12.5px ui-monospace,Consolas,monospace;background:#ffffff10;padding:1px 6px;border-radius:4px}
+.status{margin-left:auto;font-size:13px;font-weight:600;padding:3px 10px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.status.done{border-color:var(--ok);color:var(--ok)}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px;flex-wrap:wrap}
+.seg button{font:inherit;font-weight:600;color:var(--muted);background:none;border:0;border-radius:7px;padding:6px 12px;cursor:pointer}
+.seg button[aria-pressed=true]{background:#ffffff14;color:var(--ink)}
+.badge{display:inline-block;margin-left:6px;font-size:11px;font-weight:700;color:#0d0d0f;background:var(--ok);border-radius:99px;padding:0 7px;vertical-align:1px}
+.note{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:14px}
+.note p{margin:0;color:var(--muted)}
+.stage{display:flex;justify-content:center;overflow:hidden}.frame{position:relative;flex-shrink:0}
+iframe{border:0;background:#000;border-radius:14px;box-shadow:0 0 0 1px var(--line),0 20px 60px #0008;transform-origin:top left;display:block}
+.dims{color:var(--muted);font-size:12px;text-align:center;margin-top:8px}
+</style></head><body><div class="wrap">
+<header><h1>Login and profile</h1><span class="meta">Routes <code>/login</code>, <code>/profile</code> · Google sign-in, roles from the crew lists</span><span class="status" id="status"></span></header>
+<div class="bar">
+<div class="seg" id="tabs" role="group" aria-label="Option"></div>
+<div class="seg" id="screens" role="group" aria-label="Screen"><button data-s="login">Sign in</button><button data-s="error">Not on list</button><button data-s="admin">Profile: admin</button><button data-s="member">Profile: member</button></div>
+<div class="seg" id="sizes" role="group" aria-label="Viewport"><button data-w="390" data-h="844">Phone</button><button data-w="1280" data-h="800">Desktop</button></div>
+</div>
+<div class="note" id="note"></div>
+<div class="stage" id="stage"><div class="frame" id="frame"><iframe id="view" title="Option preview" sandbox="allow-scripts"></iframe></div></div>
+<div class="dims" id="dims"></div>
+</div>
+
+<script type="text/plain" id="app-css">
+:root{--background:oklch(.145 0 0);--foreground:oklch(.985 0 0);--card:oklch(.205 0 0);--muted:oklch(.269 0 0);--muted-foreground:oklch(.708 0 0);--border:oklch(1 0 0/10%);--input:oklch(1 0 0/15%);--primary:oklch(.922 0 0);--primary-foreground:oklch(.205 0 0);--destructive:oklch(.704 .191 22.216)}
+*{box-sizing:border-box}html{color-scheme:dark}
+body{margin:0;background:var(--background);color:var(--foreground);font:14px/1.5 Inter,"Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;flex-direction:column}
+h1,h2,h3,p,ul,dl,dd{margin:0}ul{padding:0;list-style:none}a{color:inherit;text-decoration:none}button{font:inherit;color:inherit}
+.nav{display:flex;align-items:center;gap:4px;padding:10px 16px;border-bottom:1px solid var(--border)}
+.logo{width:30px;height:30px;border-radius:50%;background:var(--muted);margin-right:10px;flex-shrink:0}
+.logo.lg{width:56px;height:56px;margin:0}
+.nav a{padding:10px 12px;border-radius:8px;color:var(--muted-foreground);font-weight:500;min-height:44px;display:flex;align-items:center}
+.nav a[aria-current]{color:var(--foreground);background:var(--muted)}
+.page{max-width:1152px;width:100%;margin:0 auto;padding:24px 16px;display:flex;flex-direction:column;gap:16px}
+.title{font-size:24px;font-weight:700;letter-spacing:-.01em}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px}
+.mf{color:var(--muted-foreground)}.sm{font-size:13px}.xs{font-size:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--input);background:transparent;font-weight:500;cursor:pointer}
+.btn.primary{background:var(--primary);color:var(--primary-foreground);border-color:transparent}
+.btn.full{width:100%}
+.g{width:18px;height:18px;border-radius:50%;border:2px solid currentColor;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+.alert{border:1px solid var(--destructive);border-radius:10px;padding:10px 12px;font-size:13px}
+.alert b{color:var(--destructive)}
+.av{border-radius:50%;background:oklch(.32 0 0);flex-shrink:0}
+.role{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:99px;border:1px solid var(--input);font-size:12px;font-weight:600}
+dl.rows>div{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+dl.rows>div:last-child{border-bottom:0}
+dl.rows dt{color:var(--muted-foreground)}dl.rows dd{text-align:right;word-break:break-all}
+.center{flex:1;display:flex;align-items:center;justify-content:center;padding:24px 16px}
+/* C */
+.split{flex:1;display:grid}
+@media(min-width:768px){.split{grid-template-columns:1fr 1fr}}
+.split .side{background:var(--card);padding:32px 24px;display:flex;flex-direction:column;justify-content:center;gap:12px;border-bottom:1px solid var(--border)}
+@media(min-width:768px){.split .side{border-bottom:0;border-right:1px solid var(--border);padding:48px}}
+.split .main{padding:32px 24px;display:flex;flex-direction:column;justify-content:center;gap:16px;max-width:420px;width:100%;margin:0 auto}
+.banner{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:28px 16px}
+@media(min-width:768px){.banner{flex-direction:row;text-align:left;gap:20px}}
+/* D */
+.full{flex:1;display:flex;flex-direction:column;padding:24px 16px;max-width:420px;width:100%;margin:0 auto}
+.full .top{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px}
+.full .bottom{display:flex;flex-direction:column;gap:10px;padding-bottom:8px}
+@media(min-width:768px){.full .top{flex:0;padding-top:120px}.full .bottom{padding-top:32px}}
+.group h2{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--muted-foreground);padding:0 4px 6px}
+.group ul{background:var(--card);border:1px solid var(--border);border-radius:12px}
+.group li{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:48px;padding:0 14px;border-bottom:1px solid var(--border)}
+.group li:last-child{border-bottom:0}
+.group li.act{color:var(--destructive);font-weight:500;cursor:pointer}
+/* E */
+.two{display:grid;gap:16px}
+@media(min-width:768px){.two{grid-template-columns:320px 1fr;align-items:start}}
+</script>
+
+<script type="text/plain" id="app-js">
+const U={name:"Mei Tan",email:"mei.tan@example.com"};
+const ROLE={admin:"Admin",member:"Member"};
+const ABOUT={admin:"Crew leader. Admin tools will appear here as they're built.",member:"Crew member."};
+const nav=(cur)=>'<nav class="nav"><span class="logo" aria-hidden="true"></span><a href="#">Dashboard</a><a href="#">Groups</a><a href="#"'+(cur?' aria-current="page"':'')+'>Profile</a></nav>';
+const gbtn=(cls)=>'<button class="btn '+cls+'"><span class="g" aria-hidden="true">G</span>Sign in with Google</button>';
+const err='<div class="alert" role="alert"><b>Can\'t sign in.</b> This Google account isn\'t on the crew list. Ask a crew leader to add you.</div>';
+const signout='<button class="btn">Sign out</button>';
+const av=(px)=>'<div class="av" style="width:'+px+'px;height:'+px+'px" role="img" aria-label="Profile photo"></div>';
+const rows=(r)=>'<dl class="rows"><div><dt>Name</dt><dd>'+U.name+'</dd></div><div><dt>Email</dt><dd>'+U.email+'</dd></div><div><dt>Role</dt><dd><span class="role">'+ROLE[r]+'</span></dd></div></dl>';
+
+function A(s){
+  if(s==="login"||s==="error") return nav(true)+'<div class="center"><div class="card" style="max-width:380px;width:100%;padding:24px;display:flex;flex-direction:column;gap:16px;align-items:center;text-align:center"><span class="logo lg" aria-hidden="true"></span><h1 style="font-size:20px;font-weight:700">Sign in to RepresENT</h1><p class="mf sm">Use the Google account your crew leader added.</p>'+(s==="error"?err:'')+gbtn("primary full")+'</div></div>';
+  return nav(true)+'<div class="center"><div class="card" style="max-width:380px;width:100%;padding:24px;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center">'+av(80)+'<h1 style="font-size:20px;font-weight:700">'+U.name+'</h1><p class="mf sm">'+U.email+'</p><span class="role">'+ROLE[s]+'</span><div style="margin-top:8px">'+signout+'</div></div></div>';
+}
+function B(s){
+  if(s==="login"||s==="error") return nav(true)+'<div class="page" style="max-width:560px;margin:0"><h1 class="title">Sign in</h1><p class="mf">The portal is for RepresENT crew. Sign in with the Google account your crew leader added to the list.</p>'+(s==="error"?err:'')+'<div>'+gbtn("primary")+'</div></div>';
+  return nav(true)+'<div class="page" style="max-width:560px;margin:0"><h1 class="title">Profile</h1><div class="card" style="padding:4px 16px">'+rows(s)+'</div><div>'+signout+'</div></div>';
+}
+function C(s){
+  if(s==="login"||s==="error") return '<div class="split"><div class="side"><span class="logo lg" aria-hidden="true"></span><h1 style="font-size:28px;font-weight:700">RepresENT Portal</h1><p class="mf">Covers, groups and crew stats for RepresENT members.</p></div><div class="main"><h2 style="font-size:20px;font-weight:600">Sign in</h2><p class="mf sm">Crew members only. Use your Google account.</p>'+(s==="error"?err:'')+gbtn("primary full")+'</div></div>';
+  return nav(true)+'<div class="card" style="border-radius:0;border-width:0 0 1px"><div class="banner" style="max-width:1152px;margin:0 auto">'+av(96)+'<div style="display:flex;flex-direction:column;gap:6px"><h1 style="font-size:24px;font-weight:700">'+U.name+'</h1><p class="mf sm">'+U.email+'</p><div><span class="role">'+ROLE[s]+'</span></div></div></div></div><div class="page" style="max-width:640px"><div class="card" style="padding:16px"><p class="sm mf">'+ABOUT[s]+'</p></div><div>'+signout+'</div></div>';
+}
+function D(s){
+  if(s==="login"||s==="error") return '<div class="full"><div class="top"><span class="logo lg" aria-hidden="true"></span><h1 style="font-size:22px;font-weight:700">RepresENT</h1><p class="mf sm">Crew portal</p></div><div class="bottom">'+(s==="error"?err:'')+gbtn("primary full")+'<p class="mf xs" style="text-align:center">Not on the crew list yet? Ask a crew leader.</p></div></div>';
+  return nav(true)+'<div class="page" style="max-width:520px"><div style="display:flex;align-items:center;gap:14px">'+av(56)+'<div><h1 style="font-size:20px;font-weight:700">'+U.name+'</h1><p class="mf sm">'+ROLE[s]+'</p></div></div><section class="group"><h2>Account</h2><ul><li><span class="mf">Name</span><span>'+U.name+'</span></li><li><span class="mf">Email</span><span>'+U.email+'</span></li><li><span class="mf">Signed in with</span><span>Google</span></li></ul></section><section class="group"><h2>Access</h2><ul><li><span class="mf">Role</span><span class="role">'+ROLE[s]+'</span></li></ul></section><section class="group"><ul><li class="act">Sign out</li></ul></section></div>';
+}
+function E(s){
+  if(s==="login"||s==="error") return nav(true)+'<div class="page"><h1 class="title">Sign in</h1><div class="two"><div class="card" style="padding:20px;display:flex;flex-direction:column;gap:14px">'+(s==="error"?err:'')+gbtn("primary full")+'<p class="mf xs">Only accounts on the crew list can sign in.</p></div><div class="card" style="padding:20px;display:flex;flex-direction:column;gap:8px"><h2 style="font-size:16px;font-weight:600">Who can sign in</h2><p class="mf sm">Every RepresENT member signs in with Google. Crew leaders are admins; everyone else is a member. If you\'ve just joined, a crew leader needs to add your Google email first.</p></div></div></div>';
+  return nav(true)+'<div class="page"><p class="mf sm">Signed in as '+U.email+'</p><h1 class="title">You\'re '+(s==="admin"?"an admin":"a member")+'</h1><div class="two"><div class="card" style="padding:20px;display:flex;align-items:center;gap:14px">'+av(56)+'<div style="min-width:0"><p style="font-weight:600">'+U.name+'</p><p class="mf sm" style="word-break:break-all">'+U.email+'</p></div></div><div class="card" style="padding:20px;display:flex;flex-direction:column;gap:12px"><div><span class="role">'+ROLE[s]+'</span></div><p class="mf sm">'+ABOUT[s]+'</p><div>'+signout+'</div></div></div></div>';
+}
+document.body.innerHTML=({A,B,C,D,E})[OPT](SCREEN);
+</script>
+
+<script>
+const CHOSEN = { option: "A", date: "2026-11-26" };
+const OPTIONS = [
+  { key: "A", name: "Centred card", note: "Sign-in is one card in the middle of the page with the logo and a Google button. The profile is the same card shape: photo, name, email, a role pill and Sign out. Simple and symmetrical on both widths." },
+  { key: "B", name: "Plain page", note: "Matches the dashboard and groups pages: a page title, a short line of text and the button, left-aligned. The profile is a card of Name, Email and Role rows with Sign out below. Least new styling." },
+  { key: "C", name: "Split screen", note: "Sign-in has no top bar: a panel with the portal name on one side and the Google button on the other, stacked on phones. The profile opens with a banner holding a large photo, name and role." },
+  { key: "D", name: "App style", note: "Sign-in puts the logo up top and the Google button near the bottom of the screen, within thumb reach on phones. The profile is a settings-style list grouped into Account and Access, with Sign out as its own row." },
+  { key: "E", name: "Role first", note: "Sign-in sits beside a short explanation of who can sign in and what admin and member mean. The profile leads with \"You're an admin\" or \"You're a member\", then the identity card and role card side by side on desktop." },
+];
+
+const $ = (id) => document.getElementById(id);
+let cur = "A", screen = "login", size = { w: 390, h: 844 };
+try { const s = JSON.parse(localStorage.getItem("ui-opt-size") || "null"); if (s) size = s; } catch (e) {}
+const [hOpt, hSize] = location.hash.slice(1).split("/");
+if (OPTIONS.some((o) => o.key === hOpt)) cur = hOpt;
+if (hSize === "desktop") size = { w: 1280, h: 800 }; else if (hSize === "phone") size = { w: 390, h: 844 };
+$("status").textContent = CHOSEN ? "Chosen: " + CHOSEN.option + " · " + CHOSEN.date : "Not chosen yet";
+if (CHOSEN) $("status").classList.add("done");
+OPTIONS.forEach((o) => {
+  const b = document.createElement("button");
+  b.dataset.k = o.key;
+  b.innerHTML = o.key + " · " + o.name + (CHOSEN && CHOSEN.option === o.key ? '<span class="badge">Chosen</span>' : "");
+  b.onclick = () => { cur = o.key; render(); };
+  $("tabs").appendChild(b);
+});
+document.querySelectorAll("#screens button").forEach((b) => b.onclick = () => { screen = b.dataset.s; render(); });
+document.querySelectorAll("#sizes button").forEach((b) => b.onclick = () => {
+  size = { w: +b.dataset.w, h: +b.dataset.h };
+  try { localStorage.setItem("ui-opt-size", JSON.stringify(size)); } catch (e) {}
+  render();
+});
+function fit() {
+  const s = Math.min(1, $("stage").clientWidth / size.w), f = $("view");
+  f.style.width = size.w + "px"; f.style.height = size.h + "px"; f.style.transform = "scale(" + s + ")";
+  $("frame").style.width = size.w * s + "px"; $("frame").style.height = size.h * s + "px";
+  $("dims").textContent = size.w + " x " + size.h + (s < 1 ? " (shown at " + Math.round(s * 100) + "%)" : "");
+}
+function render() {
+  const o = OPTIONS.find((x) => x.key === cur);
+  document.querySelectorAll("#tabs button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.k === cur));
+  document.querySelectorAll("#screens button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.s === screen));
+  document.querySelectorAll("#sizes button").forEach((b) => b.setAttribute("aria-pressed", +b.dataset.w === size.w));
+  $("note").innerHTML = "<p><b>" + o.key + " · " + o.name + ".</b> " + o.note + "</p>";
+  $("view").srcdoc = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>' +
+    $("app-css").textContent + '</style></head><body><script>const OPT="' + cur + '",SCREEN="' + screen + '";' +
+    $("app-js").textContent + "<\/script></body></html>";
+  fit();
+}
+addEventListener("resize", fit);
+render();
+</script></body></html>
